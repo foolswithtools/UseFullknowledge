@@ -127,8 +127,13 @@ One required `volatility` enum drives one shelf-life table:
 |---|---|---|
 | `ephemeral` | 30 days | a workaround, a release note |
 | `fast` | 90 days | a library API, a cloud console flow |
-| `slow` | 2 years | a protocol, an architectural pattern |
-| `evergreen` | 10 years | thermodynamics, sorting algorithms |
+| `slow` | 2 years | a protocol, an architectural pattern, a notation |
+| `evergreen` | 10 years | thermodynamics, sorting algorithms, information theory |
+
+Judge the **advice**, not the subject. A clean-room test of the contract caught
+this: a document about C4 notation (stable) whose guidance depends on which
+renderer and model you use (not stable) is `fast`. Listing "C4 notation" as an
+evergreen example invited exactly the inflation the rule warns against.
 
 `expires_on` is computed at build time from the last review, or from creation if
 never reviewed. **`stale` is never stored** — it depends on the day you ask, so

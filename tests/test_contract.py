@@ -95,3 +95,27 @@ class TestAgentsContract(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestContractCoversEveryField(unittest.TestCase):
+    """The clean-room test found `prompt_target` in a template but nowhere in
+    AGENTS.md, so a foreign agent had to guess its value. Any field a template
+    can put in front of a contributor must be explained by the contract."""
+
+    def test_every_template_frontmatter_key_is_mentioned_in_agents_md(self):
+        contract = read("AGENTS.md")
+        undocumented = set()
+        for kind in CONTENT_TYPES:
+            for key in parse(read(f"templates/{kind}.md")).data:
+                if key not in contract:
+                    undocumented.add(key)
+
+        self.assertEqual(
+            undocumented, set(),
+            f"template fields absent from AGENTS.md: {sorted(undocumented)}",
+        )
+
+    def test_contract_states_the_filename_is_the_id_plus_extension(self):
+        """'the filename must equal the id' is literally false: the file has .md."""
+        self.assertIn(".md", read("AGENTS.md"))
+        self.assertNotIn("filename must equal the `id`", read("AGENTS.md"))
