@@ -1,0 +1,103 @@
+name: Validate and publish
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Never cancel a running deploy: a half-published site is worse than a slow one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install the three runtime dependencies
+        run: pip install "pyyaml==6.*" "jsonschema==4.*" "markdown-it-py==3.*"
+      - name: Run the suite
+        run: PYTHONPATH=tools python3 -m unittest discover -s tests -v
+
+  validate:
+    name: Validate corpus
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # KB019 reconciles updated_at against git history. With the default
+          # shallow clone there is no history to reconcile against and the check
+          # silently measures nothing.
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "pyyaml==6.*" "jsonschema==4.*" "markdown-it-py==3.*"
+      - name: Check every document
+        run: python3 tools/kb.py check
+
+  diagrams:
+    name: Mermaid syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install the parser
+        run: npm install --no-save mermaid@11 jsdom
+      - name: Parse every diagram
+        run: node tools/check_mermaid.mjs
+
+  build:
+    name: Build site
+    runs-on: ubuntu-latest
+    needs: [test, validate, diagrams]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "pyyaml==6.*" "jsonschema==4.*" "markdown-it-py==3.*"
+      - name: Build
+        run: python3 tools/kb.py build
+      - name: Prove the build is deterministic
+        # The catalog is a cache of the documents. If two builds of the same
+        # source disagree, the cache cannot be trusted and neither can any
+        # drift check built on it.
+        run: |
+          cp -r _site _site_first
+          python3 tools/kb.py build
+          diff -r _site_first _site
+      - name: Build the search index
+        run: npx -y pagefind@1 --site _site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy to Pages
+    # Only main deploys. A pull request gets every check above and no publish.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    needs: [build]
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

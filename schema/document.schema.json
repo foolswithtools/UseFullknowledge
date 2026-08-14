@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clostaunau.github.io/UseFullknowledge/schema/document.schema.json",
+  "title": "UseFullknowledge document frontmatter",
+  "description": "Flat frontmatter for every knowledge artifact. Keys are deliberately flat, never nested: nested YAML makes `rg '^review_status: verified'` return zero results with no error, which is a silent false negative on the most important query in the corpus. `format:` keywords are deliberately unused - jsonschema does not enforce them without rfc3339-validator, so every constraint here is a `pattern`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "type",
+    "summary",
+    "tags",
+    "created_at",
+    "created_by_tool",
+    "created_by_model",
+    "updated_at",
+    "updated_by_kind",
+    "review_status",
+    "confidence_basis",
+    "volatility"
+  ],
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(Z|[+-][0-9]{2}:[0-9]{2})$",
+      "description": "ISO 8601 with an explicit timezone offset, exact to the second."
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "url": {
+      "type": "string",
+      "pattern": "^https?://[^\\s]+$"
+    }
+  },
+  "properties": {
+    "id": {
+      "$ref": "#/$defs/slug",
+      "description": "Immutable identity, `<slug>-<4 hex>`. Decoupled from path so a rename never breaks a reference."
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "type": {
+      "enum": ["explainer", "diagram", "snippet", "prompt", "note"]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One paragraph. This is what an agent reads in the catalog before deciding to fetch the document."
+    },
+    "tags": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/slug" },
+      "description": "Open vocabulary. CI reports drift but never fails on an unknown tag - the alternative is agents dumping everything into whatever tag already exists."
+    },
+
+    "created_at": { "$ref": "#/$defs/timestamp" },
+    "created_by_tool": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The AI tool or human that produced this, e.g. claude-code, cursor, chatgpt, human."
+    },
+    "created_by_model": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Model identifier, e.g. claude-opus-5. Use 'none' for human-authored content."
+    },
+    "created_by_session": {
+      "type": "string",
+      "description": "Reference to the originating prompt or session, where one exists."
+    },
+
+    "updated_at": { "$ref": "#/$defs/timestamp" },
+    "updated_by_kind": { "enum": ["human", "agent"] },
+    "updated_by": {
+      "type": "string",
+      "description": "Which human or agent performed the last update."
+    },
+
+    "review_status": {
+      "enum": ["unreviewed", "reviewed", "verified"],
+      "description": "Defaults to unreviewed. Only a human can set verified - enforced below."
+    },
+    "review_reviewer": { "type": "string", "minLength": 1 },
+    "review_reviewer_kind": { "enum": ["human", "agent"] },
+    "review_reviewed_at": { "$ref": "#/$defs/timestamp" },
+
+    "confidence_basis": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "executed-verified",
+          "primary-source-cited",
+          "secondary-source-cited",
+          "human-expert-review",
+          "cross-model-corroborated",
+          "synthetic-example",
+          "model-recall-only"
+        ]
+      },
+      "description": "Structured evidence, not a self-assessed score. A bare confidence number from a model is worthless; the basis is checkable."
+    },
+    "sources": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/url" },
+      "description": "Required whenever confidence_basis claims a citation."
+    },
+
+    "volatility": {
+      "enum": ["ephemeral", "fast", "slow", "evergreen"],
+      "description": "Drives the computed shelf life. Thermodynamics is evergreen; a JS framework's API is fast."
+    },
+
+    "aliases": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/slug" },
+      "description": "Previous ids, so links survive a rename."
+    },
+    "related": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/slug" }
+    },
+
+    "diagram_notation": { "enum": ["mermaid"] },
+    "diagram_kind": {
+      "enum": ["c4", "sequence", "er", "flowchart", "state", "class", "architecture"]
+    },
+    "c4_level": { "enum": ["context", "container", "component", "code"] },
+    "subject_system": { "$ref": "#/$defs/slug" },
+
+    "lang": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Language of a snippet, e.g. python, bash, typescript."
+    },
+    "lang_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The version this snippet was actually valid for, e.g. 3.12."
+    },
+
+    "prompt_target": {
+      "type": "string",
+      "description": "Which tool or model a prompt/skill artifact targets."
+    }
+  },
+  "allOf": [
+    {
+      "$comment": "Anything past unreviewed must name who reviewed it and when.",
+      "if": {
+        "properties": { "review_status": { "enum": ["reviewed", "verified"] } },
+        "required": ["review_status"]
+      },
+      "then": {
+        "required": ["review_reviewer", "review_reviewer_kind", "review_reviewed_at"]
+      }
+    },
+    {
+      "$comment": "The premise of the system: an agent can never self-promote to verified.",
+      "if": {
+        "properties": { "review_status": { "const": "verified" } },
+        "required": ["review_status"]
+      },
+      "then": {
+        "properties": { "review_reviewer_kind": { "const": "human" } }
+      }
+    },
+    {
+      "$comment": "Claiming a citation obliges you to produce one.",
+      "if": {
+        "properties": {
+          "confidence_basis": {
+            "contains": { "enum": ["primary-source-cited", "secondary-source-cited"] }
+          }
+        },
+        "required": ["confidence_basis"]
+      },
+      "then": {
+        "required": ["sources"],
+        "properties": { "sources": { "minItems": 1 } }
+      }
+    },
+    {
+      "if": { "properties": { "type": { "const": "diagram" } }, "required": ["type"] },
+      "then": { "required": ["diagram_notation", "diagram_kind"] }
+    },
+    {
+      "$comment": "C4 levels only mean something for C4 diagrams.",
+      "if": {
+        "properties": { "diagram_kind": { "const": "c4" } },
+        "required": ["diagram_kind"]
+      },
+      "then": { "required": ["c4_level", "subject_system"] }
+    },
+    {
+      "if": { "properties": { "type": { "const": "snippet" } }, "required": ["type"] },
+      "then": { "required": ["lang", "lang_version"] }
+    }
+  ]
+}
