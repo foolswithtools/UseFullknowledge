@@ -14,7 +14,13 @@ import { JSDOM } from "jsdom";
 const dom = new JSDOM("<!DOCTYPE html><body></body>", { pretendToBeVisual: true });
 for (const key of ["window", "document", "navigator", "Element", "SVGElement",
                    "HTMLElement", "DocumentFragment", "Node"]) {
-  globalThis[key] = key === "window" ? dom.window : dom.window[key];
+  const value = key === "window" ? dom.window : dom.window[key];
+  // Node 22 defines some of these (navigator) as getter-only on globalThis, and
+  // ESM is always strict, so plain assignment throws. defineProperty works for
+  // both the getter-only and the undefined cases.
+  Object.defineProperty(globalThis, key, {
+    value, writable: true, configurable: true, enumerable: false,
+  });
 }
 
 const { default: mermaid } = await import("mermaid");
