@@ -1,0 +1,13 @@
+# Generated output. Never commit it: a committed index conflicts on every
+# concurrent push, and an agent resolving that conflict drops a document.
+_site/
+_site_first/
+
+# Node is used only in CI, for Pagefind and the mermaid syntax check.
+node_modules/
+package-lock.json
+package.json
+
+__pycache__/
+*.pyc
+.DS_Store
