@@ -34,3 +34,25 @@ def make_id(title, tool, created_at):
     """The immutable document id: ``<slug>-<shortid>``."""
     slug = slugify(title)
     return f"{slug}-{shortid(slug, tool, created_at)}"
+
+
+def resolve_id(root, partial_id):
+    """Find a document by its id or a prefix of it.
+
+    Returns the path to the document, or None if not found.
+    Raises ValueError if the partial_id matches multiple documents.
+    """
+    import pathlib
+    matches = []
+    for md in pathlib.Path(root).glob("kb/*/*.md"):
+        name = md.stem  # filename without extension
+        if name == partial_id or name.startswith(partial_id):
+            matches.append(md)
+    if len(matches) == 0:
+        return None
+    if len(matches) > 1:
+        raise ValueError(
+            f"id '{partial_id}' matches {len(matches)} documents: "
+            f"{[m.name for m in matches]}"
+        )
+    return matches[0]

@@ -117,3 +117,35 @@ def parse(text):
             lines[match.group(1)] = offset + 2
 
     return Document(loaded, body, lines, raw)
+
+
+def dump(doc):
+    """Re-serialise a Document back to text with frontmatter fence.
+
+    Preserves the body. Re-emits frontmatter as YAML using the KbDumper
+    (safe dump with timestamps as strings, not datetime objects).
+    """
+    import yaml as _yaml
+
+    class _KbDumper(_yaml.SafeDumper):
+        pass
+
+    # Don't convert strings to datetime objects on dump
+    _KbDumper.add_representer(
+        str,
+        lambda dumper, data: dumper.represent_scalar("tag:yaml.org,2002:str", data)
+        if data and (
+            # Keep quoted strings quoted
+            True
+        )
+        else dumper.represent_scalar("tag:yaml.org,2002:str", data)
+    )
+
+    frontmatter = _yaml.dump(
+        doc.data,
+        Dumper=_KbDumper,
+        default_flow_style=False,
+        sort_keys=False,
+        allow_unicode=True,
+    )
+    return f"---\n{frontmatter}---\n{doc.body}"
