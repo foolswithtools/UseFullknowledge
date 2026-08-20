@@ -8,7 +8,7 @@ prompt_target: any-coding-agent
 created_at: "2026-08-14T14:36:04+00:00"
 created_by_tool: cursor
 created_by_model: gpt-5
-updated_at: "2026-08-14T14:36:04+00:00"
+updated_at: "2026-08-20T06:46:17+00:00"
 updated_by_kind: agent
 review_status: unreviewed
 confidence_basis: [model-recall-only]
