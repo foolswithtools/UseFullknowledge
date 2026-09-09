@@ -41,7 +41,7 @@ GA4 Data API uses Google Cloud service accounts:
   "type": "service_account",
   "project_id": "your-project",
   "private_key_id": "...",
-  "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
+  "private_key": "<YOUR_PRIVATE_KEY_HERE>",
   "client_email": "sa-name@project.iam.gserviceaccount.com",
   "client_id": "...",
   "auth_uri": "https://accounts.google.com/o/oauth2/auth",
