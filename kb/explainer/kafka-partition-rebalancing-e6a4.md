@@ -7,7 +7,7 @@ tags: [kafka, consumer-groups, distributed-systems]
 created_at: "2026-08-14T14:21:37+00:00"
 created_by_tool: claude-code
 created_by_model: claude-opus-5
-updated_at: "2026-08-20T06:46:17+00:00"
+updated_at: "2026-09-09T17:39:20+00:00"
 updated_by_kind: agent
 review_status: unreviewed
 confidence_basis: [primary-source-cited]
