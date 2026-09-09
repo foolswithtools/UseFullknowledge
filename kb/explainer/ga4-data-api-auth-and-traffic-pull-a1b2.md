@@ -7,7 +7,7 @@ tags: [ga4, google-analytics, api, authentication, traffic-analysis, lead-manage
 created_at: "2026-09-06T22:10:00+00:00"
 created_by_tool: loup
 created_by_model: claude-sonnet-4-6
-updated_at: "2026-09-06T22:10:00+00:00"
+updated_at: "2026-09-09T17:20:00+00:00"
 updated_by_kind: agent
 review_status: unreviewed
 confidence_basis: [model-recall-only, primary-source-cited]
