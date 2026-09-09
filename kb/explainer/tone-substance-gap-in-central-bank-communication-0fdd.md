@@ -7,7 +7,7 @@ tags: [tone, central-bank, monetary-policy, trading, fed, communication]
 created_at: "2026-08-20T16:13:15+00:00"
 created_by_tool: loup
 created_by_model: claude-sonnet-4
-updated_at: "2026-08-20T16:13:15+00:00"
+updated_at: "2026-08-20T16:16:22+00:00"
 updated_by_kind: agent
 review_status: unreviewed
 confidence_basis: [primary-source-cited, secondary-source-cited, model-recall-only]
@@ -19,7 +19,7 @@ sources:
 
 ## Summary
 
-Equity markets move on *how* a central banker sounds; bond markets move on *what* they actually decide. Gorodnichenko et al. (AER 2023) proved this empirically: Fed Chair vocal tone moves stock prices even after controlling for policy actions and textual sentiment. Cho and Jung (JIMF 2026) showed central-bank tone drives short-term inflation expectations through media sentiment, with substance lagging behind. The result is a systematic mispricing window — equities overreact to tone, then correct when substance arrives.
+Equity markets move on *how* a central banker sounds; bond markets move on *what* they actually decide. Gorodnichenko et al. (AER 2023) proved this empirically: Fed Chair vocal tone moves stock prices even after controlling for policy actions and textual sentiment. Cho and Jung (Open Economies Review, 2026) showed central-bank tone drives short-term inflation expectations through media sentiment, with substance lagging behind. The result is a systematic mispricing window — equities overreact to tone, then correct when substance arrives.
 
 ## Context
 
@@ -51,7 +51,7 @@ Central bank communication operates on three layers, each hitting markets on a d
 - Bond markets do NOT react to vocal tone — they track policy substance
 - This means the equity reaction to a speech is partly noise that mean-reverts
 
-**Cho and Jung (Journal of International Money and Finance, 2026):**
+**Cho and Jung (Open Economies Review, 2026):**
 - Central-bank tone drives short-term inflation expectations
 - The effect works through media sentiment as a transmission channel: tone then media coverage then consumer expectations
 - Substance (actual policy) has a lagged effect, arriving after the tone-driven reaction fades
@@ -68,15 +68,9 @@ Central bank communication operates on three layers, each hitting markets on a d
 
 **Actionable rule:** Wait 24 hours after a major Fed speech before acting on the equity reaction. Watch the bond market for the true policy signal. If equities and bonds diverge, the bond market is right.
 
-### Warsh Communication Gap (2026 application)
+### Application: structural-reform vs near-term policy
 
-Fed Chair Kevin Warsh exhibits an extreme version of this gap:
-- Uses hawkish *tone* ("inflation is a choice," "regime change")
-- Pursues structural *reform* (AIT review, balance sheet task forces, communication overhaul)
-- The tone implies near-term rate hikes; the substance is institutional restructuring
-- Markets pricing 28.5% hike probability may be pricing the tone, not the substance
-
-**Pre-commit:** Ignore the initial equity reaction to Warsh Jackson Hole keynote (Aug 28, 2026). Wait 24 hours. Check whether 10Y yield actually moved — if it did not, the speech was structural, not policy.
+A Fed Chair who uses hawkish *tone* while pursuing structural *reform* (framework reviews, communication overhauls, balance-sheet task forces) creates the widest version of this gap. The tone implies near-term rate changes; the substance is institutional restructuring. Markets may price the tone rather than the substance — and correct when no rate change materialises. The framework generalises to any central bank chair whose communication style diverges from their policy actions.
 
 ## What this is not
 
@@ -88,8 +82,8 @@ Fed Chair Kevin Warsh exhibits an extreme version of this gap:
 ## References
 
 1. Gorodnichenko, Y., et al. (2023). "Vocal Tone and Economic Policy." *American Economic Review*. https://www.aeaweb.org/articles?id=10.1257/aer.20220693
-2. Cho, D., and Jung, S. (2026). "Tone, Sentiment, and Inflation Expectations." *Journal of International Money and Finance*. https://link.springer.com/article/10.1007/s11079-026-09521-4
+2. Cho, D., and Jung, S. (2026). "Tone, Sentiment, and Inflation Expectations." *Open Economies Review*. https://link.springer.com/article/10.1007/s11079-026-09521-4
 
 ---
 
-*Filed by Loup (autonomous AI agent) for human review as the first artifact in the UseFullknowledge human review pipeline. Reviewers: designated by CLo (pending GitHub username confirmation). This explainer is grounded in primary academic sources and applied to a live trading scenario (Jackson Hole 2026).*
+*Filed by Loup (autonomous AI agent) for human review. CODEOWNERS is configured at `.github/CODEOWNERS#L4`. This explainer is grounded in primary academic sources and describes a durable framework for interpreting central bank communications.*
