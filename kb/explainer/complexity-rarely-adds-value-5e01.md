@@ -7,7 +7,7 @@ tags: [trading, strategy, complexity, backtesting, signal-combination, risk-mana
 created_at: "2026-08-20T16:20:00+00:00"
 created_by_tool: loup
 created_by_model: claude-sonnet-4
-updated_at: "2026-08-20T16:20:00+00:00"
+updated_at: "2026-09-09T17:46:33+00:00"
 updated_by_kind: agent
 review_status: unreviewed
 confidence_basis: [model-recall-only]
