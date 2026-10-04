@@ -79,6 +79,28 @@ class TestReviewCommand(unittest.TestCase):
         self.assertIn("human", out)
         self.assertEqual(self.doc_path.read_text(), before)
 
+    def test_a_partial_id_is_refused(self):
+        """A review is a signature: it names exactly one document, never a prefix."""
+        before = self.doc_path.read_text()
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = main(["--root", self.root, "review", "kafka-partition",
+                       "--status", "reviewed", "--reviewer", "chris",
+                       "--kind", "human"])
+        self.assertEqual(rc, 1)
+        self.assertIn(DOC_ID, buf.getvalue())
+        self.assertEqual(self.doc_path.read_text(), before)
+
+    def test_an_ambiguous_partial_id_is_an_error_not_a_traceback(self):
+        (self.doc_path.parent / "kafka-partition-rebalancing-e6a4.md").write_text(
+            self.doc_path.read_text().replace(DOC_ID, "kafka-partition-rebalancing-e6a4"))
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = main(["--root", self.root, "review", "kafka-partition-rebalancing",
+                       "--status", "reviewed", "--reviewer", "chris",
+                       "--kind", "human"])
+        self.assertEqual(rc, 1)
+
     def test_unknown_document_returns_error(self):
         buf = io.StringIO()
         with redirect_stdout(buf):

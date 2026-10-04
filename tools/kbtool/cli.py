@@ -110,7 +110,7 @@ def main(argv=None):
 
     # review — record who reviewed a document, and when
     review = sub.add_parser("review", help="record a review of a document")
-    review.add_argument("id", help="Document id (or partial id to match)")
+    review.add_argument("id", help="the exact document id")
     review.add_argument("--status", required=True, choices=["reviewed", "verified"])
     review.add_argument("--reviewer", required=True, help="who reviewed it")
     review.add_argument("--kind", required=True, choices=["human", "agent"],
@@ -217,9 +217,17 @@ def cmd_review(args):
         return 1
 
     root = pathlib.Path(args.root) if args.root else pathlib.Path.cwd()
-    doc_path = resolve_id(root, args.id)
+    try:
+        doc_path = resolve_id(root, args.id)
+    except ValueError as exc:
+        print(f"Error: {exc}")
+        return 1
     if doc_path is None:
         print(f"Error: no document matching id '{args.id}'")
+        return 1
+    # A review is a signature on one document, so a prefix is not enough.
+    if doc_path.stem != args.id:
+        print(f"Error: give the full id to record a review: {doc_path.stem}")
         return 1
 
     now = args.now or datetime.datetime.now(datetime.timezone.utc).isoformat()
