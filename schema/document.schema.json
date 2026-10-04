@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://clostaunau.github.io/UseFullknowledge/schema/document.schema.json",
+  "$id": "https://foolswithtools.github.io/UseFullknowledge/schema/document.schema.json",
   "title": "UseFullknowledge document frontmatter",
   "description": "Flat frontmatter for every knowledge artifact. Keys are deliberately flat, never nested: nested YAML makes `rg '^review_status: verified'` return zero results with no error, which is a silent false negative on the most important query in the corpus. `format:` keywords are deliberately unused - jsonschema does not enforce them without rfc3339-validator, so every constraint here is a `pattern`.",
   "type": "object",

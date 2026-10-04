@@ -24,8 +24,8 @@ from kbtool.frontmatter import ParseError, parse
 from kbtool.shelflife import expires_on
 from kbtool.validate import iter_documents
 
-SITE_BASE = "https://clostaunau.github.io/UseFullknowledge"
-RAW_BASE = "https://raw.githubusercontent.com/clostaunau/UseFullknowledge/main"
+SITE_BASE = "https://foolswithtools.github.io/UseFullknowledge"
+RAW_BASE = "https://raw.githubusercontent.com/foolswithtools/UseFullknowledge/main"
 
 
 def _write_json(path, payload):
