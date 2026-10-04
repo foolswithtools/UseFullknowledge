@@ -1,0 +1,53 @@
+name: Jev advice and link check
+
+# On demand only. This is advice for a human reviewer, not a gate: it is never
+# a required check and nothing in publish.yml depends on it, so the published
+# site never waits on the network or the TypeSafe API.
+on:
+  workflow_dispatch:
+    inputs:
+      ids:
+        description: "Document ids, space-separated (blank = every document)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  advise:
+    name: Advise and check links
+    runs-on: ubuntu-latest
+    env:
+      # Passed through env, never interpolated into the script, so a crafted
+      # input cannot inject shell.
+      IDS: ${{ inputs.ids }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Nothing here pushes; don't leave the job token in .git/config.
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "pyyaml==6.*" "jsonschema==4.*" "markdown-it-py==3.*"
+      - name: Jev review advice
+        env:
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+        run: |
+          set -o pipefail -f  # -f: no glob expansion of $IDS
+          { echo '## Jev review advice'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          # $IDS is unquoted on purpose (a space-separated list); `--` stops an
+          # id being read as an option such as --source-file.
+          python3 tools/kb.py advise -- $IDS | tee -a "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - name: External links and DOIs
+        # Runs even if advice failed; fails the job only on a definitely broken link.
+        if: always()
+        run: |
+          set -o pipefail -f
+          { echo '## Links and DOIs'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          status=0
+          python3 tools/kb.py links -- $IDS | tee -a "$GITHUB_STEP_SUMMARY" || status=$?
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit $status

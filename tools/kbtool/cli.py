@@ -118,6 +118,18 @@ def main(argv=None):
     review.add_argument("--now", default=None, help="Override the review timestamp")
     review.set_defaults(func=cmd_review)
 
+    # advise — opt-in review advice from Jev; never part of check or build
+    advise = sub.add_parser("advise", help="ask Jev for review advice (needs TYPESAFE_API_KEY)")
+    advise.add_argument("ids", nargs="*", help="exact document ids (default: all)")
+    advise.add_argument("--claim", help="check one claim against the document's cited sources")
+    advise.add_argument("--source-file", help="with --claim: judge this text file instead of fetching")
+    advise.set_defaults(func=cmd_advise)
+
+    # links — opt-in external link and DOI check; needs network
+    links = sub.add_parser("links", help="check external links and DOIs (needs network)")
+    links.add_argument("ids", nargs="*", help="exact document ids (default: all)")
+    links.set_defaults(func=cmd_links)
+
     # search — query documents locally without HTTPS
     search = sub.add_parser("search", help="search documents locally")
     search.add_argument("--tag", default=None, help="Filter by tag")
@@ -246,6 +258,31 @@ def cmd_review(args):
     doc_path.write_text(dump(doc))
     print(f"Reviewed: {doc_path.relative_to(root)} ({args.status} by {args.reviewer})")
     return 0
+
+
+def cmd_advise(args):
+    """Ask Jev for review advice on documents. Opt-in; needs TYPESAFE_API_KEY."""
+    import os
+    from . import advise, jev
+
+    root = pathlib.Path(args.root) if args.root else pathlib.Path.cwd()
+    ask = lambda state, questions: jev.ask(state, questions, env=os.environ)
+    if args.claim:
+        from . import claim
+        if len(args.ids) != 1:
+            print("Error: --claim needs exactly one document id.")
+            return 1
+        return claim.run(root, args.ids[0], args.claim, ask, claim.urllib_fetch_text,
+                         source_file=args.source_file)
+    return advise.run(root, args.ids, ask)
+
+
+def cmd_links(args):
+    """Check external links and DOIs. Opt-in: needs network."""
+    from . import links
+
+    root = pathlib.Path(args.root) if args.root else pathlib.Path.cwd()
+    return links.run(root, args.ids, links.urllib_fetch)
 
 
 def cmd_search(args):
