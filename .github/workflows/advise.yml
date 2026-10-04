@@ -10,10 +10,6 @@ on:
         description: "Document ids, space-separated (blank = every document)"
         required: false
         default: ""
-  # TEMPORARY: lets this branch exercise the workflow before it exists on main.
-  # Remove before merging.
-  push:
-    branches: [feat/jev-advise]
 
 permissions:
   contents: read
