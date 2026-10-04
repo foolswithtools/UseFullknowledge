@@ -11,6 +11,8 @@ once per file is roughly two orders of magnitude slower at corpus scale.
 import datetime
 import subprocess
 
+from .timestamps import parse_timestamp
+
 # Beyond this, a claimed updated_at and the real commit time have diverged
 # enough that someone forgot to bump it.
 DRIFT_TOLERANCE = datetime.timedelta(hours=24)
@@ -49,17 +51,13 @@ def git_updated_map(root, runner=subprocess.run):
     return updated
 
 
-def _parse(value):
-    return datetime.datetime.fromisoformat(value)
-
-
 def reconcile(claimed, actual):
     """Return a problem string, or None when the claim is consistent with git."""
     if actual is None:
         return None
 
-    claimed_at = _parse(claimed)
-    actual_at = _parse(actual)
+    claimed_at = parse_timestamp(claimed)
+    actual_at = parse_timestamp(actual)
     delta = claimed_at - actual_at
 
     if delta > FUTURE_TOLERANCE:

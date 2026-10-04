@@ -10,6 +10,8 @@ reviewing a document is what makes it trustworthy again.
 
 import datetime
 
+from .timestamps import parse_timestamp
+
 # One required `volatility` enum drives every shelf life, so nobody has to
 # hand-set a review-by date on a document about thermodynamics.
 SHELF_LIFE_DAYS = {
@@ -26,7 +28,7 @@ def expires_on(created_at, volatility, reviewed_at=None):
         raise ValueError(f"unknown volatility {volatility!r}")
 
     anchor = reviewed_at or created_at
-    start = datetime.datetime.fromisoformat(anchor).date()
+    start = parse_timestamp(anchor).date()
     return (start + datetime.timedelta(days=SHELF_LIFE_DAYS[volatility])).isoformat()
 
 
