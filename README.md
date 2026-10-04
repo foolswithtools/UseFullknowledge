@@ -9,11 +9,11 @@ and when it should be re-checked.** That is the point of the repo: without it,
 there is no way to tell whether a document is safe to feed to another AI as
 context.
 
-**Site:** https://clostaunau.github.io/UseFullknowledge/
+**Site:** https://foolswithtools.github.io/UseFullknowledge/
 
 ## For humans
 
-Browse the [site](https://clostaunau.github.io/UseFullknowledge/). It has
+Browse the [site](https://foolswithtools.github.io/UseFullknowledge/). It has
 full-text search with filters for review status, content type and confidence.
 Every page shows its provenance in a footer, so you can judge a document you
 arrived at from a search engine without opening this repo.
@@ -23,7 +23,7 @@ are plain markdown and read fine on github.com or in an editor.
 
 ## For AI agents
 
-Start at **[`llms.txt`](https://clostaunau.github.io/UseFullknowledge/llms.txt)**.
+Start at **[`llms.txt`](https://foolswithtools.github.io/UseFullknowledge/llms.txt)**.
 It explains the catalog and the trust rules in about 3 KB.
 
 Do not crawl the site. Fetch the catalog:
@@ -38,7 +38,7 @@ Getting from zero knowledge to a trust-filtered document costs about 10k tokens
 and three fetches. Raw markdown for any document is fetchable directly:
 
 ```
-https://raw.githubusercontent.com/clostaunau/UseFullknowledge/main/<md path>
+https://raw.githubusercontent.com/foolswithtools/UseFullknowledge/main/<md path>
 ```
 
 To use only trustworthy context, take `catalog/verified.json` and keep records
