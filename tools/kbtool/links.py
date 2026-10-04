@@ -129,7 +129,7 @@ def run(root, ids, fetch):
 
     broken = unchecked = checked = 0
     for rel, text in docs:
-        # A URL carrying a DOI is judged by Crossref alone: publishers such as
+        # A URL carrying a DOI is judged by the DOI registry alone: publishers such as
         # Springer answer scripts with 404 from behind a bot wall.
         results = [("link", u, check_url(u, fetch)) for u in extract_urls(text)
                    if not DOI_RE.search(u)]
