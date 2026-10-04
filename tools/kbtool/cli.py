@@ -118,6 +118,11 @@ def main(argv=None):
     review.add_argument("--now", default=None, help="Override the review timestamp")
     review.set_defaults(func=cmd_review)
 
+    # advise — opt-in review advice from Jev; never part of check or build
+    advise = sub.add_parser("advise", help="ask Jev for review advice (needs TYPESAFE_API_KEY)")
+    advise.add_argument("ids", nargs="*", help="exact document ids (default: all)")
+    advise.set_defaults(func=cmd_advise)
+
     # search — query documents locally without HTTPS
     search = sub.add_parser("search", help="search documents locally")
     search.add_argument("--tag", default=None, help="Filter by tag")
@@ -246,6 +251,16 @@ def cmd_review(args):
     doc_path.write_text(dump(doc))
     print(f"Reviewed: {doc_path.relative_to(root)} ({args.status} by {args.reviewer})")
     return 0
+
+
+def cmd_advise(args):
+    """Ask Jev for review advice on documents. Opt-in; needs TYPESAFE_API_KEY."""
+    import os
+    from . import advise, jev
+
+    root = pathlib.Path(args.root) if args.root else pathlib.Path.cwd()
+    return advise.run(root, args.ids, lambda state, questions: jev.ask(
+        state, questions, env=os.environ))
 
 
 def cmd_search(args):
