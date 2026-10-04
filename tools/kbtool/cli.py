@@ -106,9 +106,17 @@ def main(argv=None):
     update.add_argument("id", help="Document id (or partial id to match)")
     update.add_argument("--set", action="append", default=[],
                         help="Set a frontmatter field: --set key=value")
-    update.add_argument("--reviewer", default=None, help="Set review_reviewer")
-    update.add_argument("--reviewer-kind", default=None, help="Set review_reviewer_kind")
     update.add_argument("--now", default=None, help="Override updated_at timestamp")
+
+    # review — record who reviewed a document, and when
+    review = sub.add_parser("review", help="record a review of a document")
+    review.add_argument("id", help="Document id (or partial id to match)")
+    review.add_argument("--status", required=True, choices=["reviewed", "verified"])
+    review.add_argument("--reviewer", required=True, help="who reviewed it")
+    review.add_argument("--kind", required=True, choices=["human", "agent"],
+                        help="human or agent; agents must never pass human")
+    review.add_argument("--now", default=None, help="Override the review timestamp")
+    review.set_defaults(func=cmd_review)
 
     # search — query documents locally without HTTPS
     search = sub.add_parser("search", help="search documents locally")
@@ -135,7 +143,9 @@ if __name__ == "__main__":
 def cmd_update(args):
     """Update frontmatter fields on an existing document.
 
-    Usage: kb update <id> --set key=value [--reviewer name --reviewer-kind kind] [--now TS]
+    Usage: kb update <id> --set key=value [--now TS]
+
+    Review fields are refused here: recording a review is `kb review`.
     """
     import datetime
     from .frontmatter import parse, dump
@@ -151,16 +161,16 @@ def cmd_update(args):
     doc = parse(text)
 
     # Parse --set key=value pairs
-    allowed_fields = {
-        "review_status", "review_reviewer", "review_reviewer_kind",
-        "review_reviewed_at", "confidence_basis", "volatility",
-        "tags", "summary", "title",
-    }
+    allowed_fields = {"confidence_basis", "volatility", "tags", "summary", "title"}
     for pair in (args.set or []):
         if "=" not in pair:
             print(f"Error: --set expects key=value, got '{pair}'")
             return 1
         key, val = pair.split("=", 1)
+        if key in REVIEW_FIELDS:
+            print(f"Error: '{key}' is a review field. Record a review with "
+                  f"`kb review <id> --status ... --reviewer ... --kind ...`.")
+            return 1
         if key not in allowed_fields:
             print(f"Error: unknown field '{key}'. Allowed: {sorted(allowed_fields)}")
             return 1
@@ -171,12 +181,6 @@ def cmd_update(args):
         except Exception:
             parsed_val = val
         doc.data[key] = parsed_val
-
-    # Handle --reviewer and --reviewer-kind as shortcuts
-    if args.reviewer:
-        doc.data["review_reviewer"] = args.reviewer
-    if args.reviewer_kind:
-        doc.data["review_reviewer_kind"] = args.reviewer_kind
 
     # Refresh updated_at
     if args.now:
@@ -189,6 +193,46 @@ def cmd_update(args):
     # Write back
     doc_path.write_text(dump(doc))
     print(f"Updated: {doc_path.relative_to(root)}")
+    return 0
+
+
+REVIEW_FIELDS = (
+    "review_status", "review_reviewer", "review_reviewer_kind", "review_reviewed_at",
+)
+
+
+def cmd_review(args):
+    """Record a review: all review fields at once, so the result passes the schema.
+
+    Usage: kb review <id> --status reviewed|verified --reviewer NAME --kind human|agent [--now TS]
+
+    AGENTS.md forbids agents from running this with `--kind human`.
+    """
+    import datetime
+    from .frontmatter import parse, dump
+    from .identity import resolve_id
+
+    if args.status == "verified" and args.kind != "human":
+        print("Error: only a human reviewer can mark a document verified.")
+        return 1
+
+    root = pathlib.Path(args.root) if args.root else pathlib.Path.cwd()
+    doc_path = resolve_id(root, args.id)
+    if doc_path is None:
+        print(f"Error: no document matching id '{args.id}'")
+        return 1
+
+    now = args.now or datetime.datetime.now(datetime.timezone.utc).isoformat()
+    doc = parse(doc_path.read_text())
+    doc.data["review_status"] = args.status
+    doc.data["review_reviewer"] = args.reviewer
+    doc.data["review_reviewer_kind"] = args.kind
+    doc.data["review_reviewed_at"] = now
+    doc.data["updated_at"] = now
+    doc.data["updated_by_kind"] = args.kind
+
+    doc_path.write_text(dump(doc))
+    print(f"Reviewed: {doc_path.relative_to(root)} ({args.status} by {args.reviewer})")
     return 0
 
 
