@@ -45,7 +45,10 @@ def _urllib_transport(body, key, timeout):
     )
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
-            return response.status, json.loads(response.read())
+            try:
+                return response.status, json.loads(response.read())
+            except ValueError:
+                raise JevUnavailable(f"reply was not JSON ({response.status})") from None
     except urllib.error.HTTPError as exc:
         try:
             return exc.code, json.loads(exc.read())
@@ -78,10 +81,13 @@ def ask(state, questions, *, env, model=DEFAULT_MODEL, transport=None,
 
     if status == 401:
         raise JevUnavailable("API key rejected")
+    if not isinstance(reply, dict):
+        raise JevUnavailable(f"unexpected reply ({status})")
     if status in RETRYABLE:
         raise JevUnavailable(f"service busy ({status})")
     if status in (400, 422):
-        detail = json.dumps(reply.get("detail", reply))[:300].replace(key, "***")
+        # Redact before truncating: a key straddling the cut would survive in part.
+        detail = json.dumps(reply.get("detail", reply)).replace(key, "***")[:300]
         raise JevRequestError(f"request rejected ({status}): {detail}")
     if status != 200:
         raise JevUnavailable(f"unexpected status {status}")

@@ -4,23 +4,30 @@
 It found a DOI in the corpus that never existed (10.1257/aer.20220693).
 
 Only a definite answer fails a run: 404, 410, a host that does not resolve,
-or a DOI Crossref has no record of. Many publishers refuse scripts (403, 429)
+or a DOI the doi.org registry has no record of. Many publishers refuse scripts (403, 429)
 or are briefly down; those links are reported as unchecked, never as broken.
-A URL that carries a DOI is checked through Crossref instead of the publisher.
+A URL that carries a DOI is checked through doi.org instead of the publisher.
 """
 
+import http.client
 import pathlib
 import re
 import socket
 import urllib.error
+import urllib.parse
 import urllib.request
 
-URL_RE = re.compile(r"https?://[^\s<>\"')\]]+")
-DOI_RE = re.compile(r"\b10\.\d{4,9}/[^\s\"'<>)\]&]+")
-FENCE_RE = re.compile(r"^```.*?^```", re.MULTILINE | re.DOTALL)
+# Parentheses are allowed inside (Wikipedia titles, Lancet DOIs); an unbalanced
+# closing one is markdown's and is trimmed off afterwards.
+URL_RE = re.compile(r"https?://[^\s<>\"'`*\]]+")
+DOI_RE = re.compile(r"\b10\.\d{4,9}/[^\s\"'<>\]&`*]+")
+FENCE_RE = re.compile(r"^(```|~~~).*?^\1", re.MULTILINE | re.DOTALL)
 TRAILING = ".,;:"
 BROKEN_STATUSES = {404, 410}
-CROSSREF = "https://api.crossref.org/works/"
+# The handle registry behind doi.org answers for every registration agency;
+# Crossref alone 404s on DataCite DOIs such as arXiv's.
+DOI_HANDLES = "https://doi.org/api/handles/"
+URL_SAFE = ":/?#[]@!$&'()*+,;=%~"
 # Some publishers turn away the default Python agent outright.
 USER_AGENT = "Mozilla/5.0 (compatible; UseFullknowledge-linkcheck/1.0)"
 
@@ -37,23 +44,39 @@ def _unique(items):
     return list(dict.fromkeys(items))
 
 
+def _trim(match):
+    """Drop trailing punctuation and any closing parenthesis left unbalanced."""
+    while True:
+        trimmed = match.rstrip(TRAILING)
+        if trimmed.endswith(")") and trimmed.count(")") > trimmed.count("("):
+            trimmed = trimmed[:-1]
+        if trimmed == match:
+            return match
+        match = trimmed
+
+
+def encode_url(url):
+    """Percent-encode what urllib cannot send (non-ASCII), leaving the rest alone."""
+    return urllib.parse.quote(url, safe=URL_SAFE)
+
+
 def extract_urls(text):
     """External URLs from `sources` and the body, code blocks excluded, in order."""
     from .frontmatter import parse
 
     doc = parse(text)
     found = [str(u) for u in doc.data.get("sources") or []]
-    found += [u.rstrip(TRAILING) for u in URL_RE.findall(FENCE_RE.sub("", doc.body))]
+    found += [_trim(u) for u in URL_RE.findall(FENCE_RE.sub("", doc.body))]
     return _unique(found)
 
 
 def extract_dois(text):
-    return _unique(d.rstrip(TRAILING) for d in DOI_RE.findall(" ".join(extract_urls(text))))
+    return _unique(_trim(d) for d in DOI_RE.findall(" ".join(extract_urls(text))))
 
 
 def urllib_fetch(url, timeout=15):
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     try:
+        request = urllib.request.Request(encode_url(url), headers={"User-Agent": USER_AGENT})
         with urllib.request.urlopen(request, timeout=timeout) as response:
             return response.status
     except urllib.error.HTTPError as exc:
@@ -62,7 +85,7 @@ def urllib_fetch(url, timeout=15):
         if isinstance(exc.reason, socket.gaierror):
             raise LinkError("broken", "host not found") from None
         raise LinkError("unchecked", str(exc.reason)) from None
-    except (TimeoutError, OSError) as exc:
+    except (TimeoutError, OSError, ValueError, http.client.HTTPException) as exc:
         raise LinkError("unchecked", exc.__class__.__name__) from None
 
 
@@ -78,7 +101,19 @@ def check_url(url, fetch):
 
 
 def check_doi(doi, fetch):
-    return check_url(CROSSREF + doi, fetch)
+    """A DOI exists if doi.org knows it, or a shorter prefix when a publisher
+    path follows it in a URL (10.1145/3290605.3300857/fulltext.html)."""
+    verdicts = []
+    candidate = doi
+    while True:
+        verdict = check_url(DOI_HANDLES + candidate, fetch)
+        if verdict == "ok":
+            return "ok"
+        verdicts.append(verdict)
+        if candidate.count("/") < 2:
+            break
+        candidate = candidate.rsplit("/", 1)[0]
+    return "unchecked" if "unchecked" in verdicts else "broken"
 
 
 def run(root, ids, fetch):

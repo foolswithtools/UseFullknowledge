@@ -63,6 +63,22 @@ class TestAsk(unittest.TestCase):
             except (JevUnavailable, JevRequestError) as exc:
                 self.assertNotIn("test-key-not-real", str(exc), status)
 
+    def test_a_key_straddling_the_message_cut_is_still_redacted(self):
+        """Redact before truncating, or a key at the cut survives in part."""
+        key = "sk-live-ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        try:
+            ask("state", Q, env={"TYPESAFE_API_KEY": key},
+                transport=fake((422, {"detail": "x" * 270 + key})))
+        except JevRequestError as exc:
+            self.assertNotIn(key[:12], str(exc))
+        else:
+            self.fail("expected JevRequestError")
+
+    def test_a_reply_that_is_not_a_json_object_is_unavailable(self):
+        for status in (200, 422):
+            with self.assertRaises(JevUnavailable, msg=status):
+                ask("state", Q, env=KEY, transport=fake((status, ["not", "an", "object"])))
+
     def test_malformed_request_is_a_caller_bug(self):
         with self.assertRaises(JevRequestError):
             ask("state", Q, env=KEY,

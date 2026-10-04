@@ -168,11 +168,18 @@ class TestRun(unittest.TestCase):
         _, out = self.run_advise(FakeJev())
         self.assertIn("not a fact check", out.lower())
 
-    def test_ids_limit_the_documents(self):
+    def test_an_unknown_id_is_an_error_and_nothing_is_asked(self):
         jev = FakeJev()
         rc, _ = self.run_advise(jev, ids=["no-such-doc-0000"])
         self.assertEqual(rc, 1)
         self.assertEqual(jev.requests, [])
+
+    def test_a_known_id_limits_the_run_to_that_document(self):
+        other = DOC.replace("kafka-partition-rebalancing-7f3a", "other-doc-0001")
+        (self.root / "kb" / "explainer" / "other-doc-0001.md").write_text(other)
+        rc, out = self.run_advise(FakeJev(), ids=["other-doc-0001"])
+        self.assertEqual(rc, 0)
+        self.assertIn("1 document(s) checked", out)
 
     def test_unavailable_jev_is_skipped_with_exit_0(self):
         def unavailable(state, questions):

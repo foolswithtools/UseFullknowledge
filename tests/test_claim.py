@@ -93,6 +93,21 @@ class TestSourceText(unittest.TestCase):
         self.assertEqual(seen, ["https://api.crossref.org/works/10.1257/aer.20220129"])
         self.assertEqual(text, "Vocal tone moves stock prices.")
 
+    def test_a_doi_unknown_to_crossref_falls_back_to_the_page(self):
+        """arXiv DOIs are registered with DataCite, so Crossref 404s on them."""
+        def fetch_text(url):
+            if "crossref" in url:
+                raise OSError("404")
+            return "<p>Attention is all you need.</p>"
+        self.assertEqual(claim.source_text("https://doi.org/10.48550/arXiv.1706.03762", fetch_text),
+                         "Attention is all you need.")
+
+    def test_only_html_and_plain_text_are_decoded(self):
+        """A PDF run through html_to_text is junk Jev would judge; it must be unchecked."""
+        self.assertEqual(claim.decode_body("text/html; charset=utf-8", b"<p>hi</p>"), "<p>hi</p>")
+        with self.assertRaises(ValueError):
+            claim.decode_body("application/pdf", b"%PDF-1.7")
+
     def test_an_unfetchable_source_is_empty(self):
         def fetch_text(url):
             raise OSError("blocked")
@@ -169,6 +184,16 @@ class TestRun(unittest.TestCase):
         rc, out = self.run_claim(ask, lambda url: SOURCE)
         self.assertEqual(rc, 0)
         self.assertIn("skipped", out)
+
+    def test_glob_characters_in_the_id_match_nothing(self):
+        rc, _ = self.run_claim(FakeJev([]), lambda url: SOURCE, doc_id="*")
+        self.assertEqual(rc, 1)
+
+    def test_a_missing_source_file_is_an_error_not_a_traceback(self):
+        rc, out = self.run_claim(FakeJev([]), lambda url: SOURCE,
+                                 source_file=str(self.root / "no-such-file.txt"))
+        self.assertEqual(rc, 1)
+        self.assertIn("no-such-file.txt", out)
 
     def test_unknown_id_is_an_error(self):
         rc, _ = self.run_claim(FakeJev([]), lambda url: SOURCE, doc_id="nope-0000")

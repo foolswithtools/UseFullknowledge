@@ -24,6 +24,9 @@ jobs:
       IDS: ${{ inputs.ids }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Nothing here pushes; don't leave the job token in .git/config.
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -32,18 +35,19 @@ jobs:
         env:
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
         run: |
-          set -o pipefail
+          set -o pipefail -f  # -f: no glob expansion of $IDS
           { echo '## Jev review advice'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-          # $IDS is unquoted on purpose: it is a space-separated list.
-          python3 tools/kb.py advise $IDS | tee -a "$GITHUB_STEP_SUMMARY"
+          # $IDS is unquoted on purpose (a space-separated list); `--` stops an
+          # id being read as an option such as --source-file.
+          python3 tools/kb.py advise -- $IDS | tee -a "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
       - name: External links and DOIs
         # Runs even if advice failed; fails the job only on a definitely broken link.
         if: always()
         run: |
-          set -o pipefail
+          set -o pipefail -f
           { echo '## Links and DOIs'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           status=0
-          python3 tools/kb.py links $IDS | tee -a "$GITHUB_STEP_SUMMARY" || status=$?
+          python3 tools/kb.py links -- $IDS | tee -a "$GITHUB_STEP_SUMMARY" || status=$?
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           exit $status

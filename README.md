@@ -125,7 +125,7 @@ well and truth badly: a summary with one wrong detail still passes, so this is
 not fact-checking. Without a key it prints "skipped" and exits 0.
 
 `links` fails only on a definite answer (404, 410, an unknown host, or a DOI
-Crossref has no record of). Pages that refuse scripts are reported as
+the doi.org registry has no record of). Pages that refuse scripts are reported as
 unchecked.
 
 Both run on demand in CI from the **Jev advice and link check** workflow,

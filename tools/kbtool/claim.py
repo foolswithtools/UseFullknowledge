@@ -14,7 +14,7 @@ import json
 import re
 import urllib.request
 
-from .links import DOI_RE, USER_AGENT
+from .links import DOI_RE, USER_AGENT, encode_url
 
 WINDOW_CHARS = 1500
 WINDOW_STRIDE = 750
@@ -67,21 +67,38 @@ def check(claim_text, text, ask):
     return max(decisive or answers, key=lambda a: a[1])
 
 
+TEXT_TYPES = {"text/html", "text/plain", "application/json", "application/xhtml+xml"}
+
+
+def decode_body(content_type, raw):
+    """Decode a text response. A PDF or image raises: it is unchecked, not judged as junk."""
+    media, _, params = content_type.partition(";")
+    if media.strip().lower() not in TEXT_TYPES:
+        raise ValueError(f"not text: {media.strip()}")
+    charset = re.search(r"charset=([\w-]+)", params)
+    return raw.decode(charset.group(1) if charset else "utf-8", errors="replace")
+
+
 def urllib_fetch_text(url, timeout=15):
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    request = urllib.request.Request(encode_url(url), headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(request, timeout=timeout) as response:
-        return response.read(MAX_FETCH_BYTES).decode("utf-8", errors="replace")
+        return decode_body(response.headers.get("Content-Type", ""),
+                           response.read(MAX_FETCH_BYTES))
 
 
 def source_text(url, fetch_text):
     """Plain text of a source: the Crossref abstract for a DOI, else the page. '' if unavailable."""
-    try:
-        doi = DOI_RE.search(url)
-        if doi:
+    doi = DOI_RE.search(url)
+    if doi:
+        # Crossref has no record of DataCite DOIs (arXiv); fall through to the page.
+        try:
             record = json.loads(fetch_text("https://api.crossref.org/works/" + doi.group(0)))
             abstract = record.get("message", {}).get("abstract")
             if abstract:
                 return html_to_text(abstract)
+        except Exception:
+            pass
+    try:
         return html_to_text(fetch_text(url))
     except Exception:
         return ""
@@ -94,13 +111,18 @@ def run(root, doc_id, claim_text, ask, fetch_text, source_file=None):
     from .frontmatter import parse
     from .jev import DEFAULT_MODEL, JevRequestError, JevUnavailable
 
-    path = next(pathlib.Path(root).glob(f"kb/*/{doc_id}.md"), None)
+    # Compare stems, not a glob pattern: an id of "*" must match nothing.
+    path = next((p for p in pathlib.Path(root).glob("kb/*/*.md") if p.stem == doc_id), None)
     if path is None:
         print(f"Error: no document with id {doc_id}")
         return 1
 
     if source_file:
-        sources = [(pathlib.Path(source_file).name, pathlib.Path(source_file).read_text())]
+        try:
+            sources = [(pathlib.Path(source_file).name, pathlib.Path(source_file).read_text())]
+        except OSError as exc:
+            print(f"Error: cannot read {source_file}: {exc.strerror}")
+            return 1
     else:
         urls = [str(u) for u in parse(path.read_text()).data.get("sources") or []]
         if not urls:

@@ -52,6 +52,30 @@ class TestExtract(unittest.TestCase):
     def test_finds_dois_inside_urls(self):
         self.assertEqual(links.extract_dois(DOC), ["10.1257/aer.20220693"])
 
+    def body(self, text):
+        return DOC.replace("Internal links", text + "\nInternal links")
+
+    def test_dois_keep_balanced_parentheses(self):
+        text = self.body("[Lancet](https://doi.org/10.1016/S0140-6736(20)30183-5).")
+        self.assertIn("10.1016/S0140-6736(20)30183-5", links.extract_dois(text))
+
+    def test_urls_keep_balanced_parentheses_but_not_the_markdown_closer(self):
+        text = self.body("[Kafka](https://en.wikipedia.org/wiki/Apache_Kafka_(software)) and "
+                         "(see https://example.org/aside)")
+        urls = links.extract_urls(text)
+        self.assertIn("https://en.wikipedia.org/wiki/Apache_Kafka_(software)", urls)
+        self.assertIn("https://example.org/aside", urls)
+
+    def test_inline_code_and_bold_markers_are_not_part_of_a_url(self):
+        text = self.body("`https://example.org/code` and **https://example.org/bold**")
+        urls = links.extract_urls(text)
+        self.assertIn("https://example.org/code", urls)
+        self.assertIn("https://example.org/bold", urls)
+
+    def test_tilde_fences_are_skipped_like_backtick_fences(self):
+        text = self.body("~~~\ncurl https://example.org/in-tilde-fence\n~~~")
+        self.assertNotIn("https://example.org/in-tilde-fence", links.extract_urls(text))
+
 
 class FakeFetch:
     def __init__(self, statuses):
@@ -85,10 +109,25 @@ class TestClassify(unittest.TestCase):
         fetch = FakeFetch({"u": links.LinkError("unchecked", "timed out")})
         self.assertEqual(links.check_url("u", fetch), "unchecked")
 
-    def test_a_doi_is_checked_against_crossref(self):
-        fetch = FakeFetch({"https://api.crossref.org/works/10.1257/aer.20220693": 404})
+    def test_a_doi_is_checked_against_the_doi_handle_registry(self):
+        """doi.org covers every registration agency; Crossref alone misses arXiv (DataCite)."""
+        fetch = FakeFetch({"https://doi.org/api/handles/10.1257/aer.20220693": 404})
         self.assertEqual(links.check_doi("10.1257/aer.20220693", fetch), "broken")
-        self.assertEqual(fetch.seen, ["https://api.crossref.org/works/10.1257/aer.20220693"])
+        self.assertEqual(fetch.seen, ["https://doi.org/api/handles/10.1257/aer.20220693"])
+
+    def test_a_doi_followed_by_a_publisher_path_is_retried_without_it(self):
+        fetch = FakeFetch({"https://doi.org/api/handles/10.1145/3290605.3300857/fulltext.html": 404})
+        self.assertEqual(links.check_doi("10.1145/3290605.3300857/fulltext.html", fetch), "ok")
+
+    def test_a_non_ascii_url_is_percent_encoded(self):
+        self.assertEqual(links.encode_url("https://de.wikipedia.org/wiki/Münster"),
+                         "https://de.wikipedia.org/wiki/M%C3%BCnster")
+        self.assertEqual(links.encode_url("https://a.org/x?id=10.1/a%20b"),
+                         "https://a.org/x?id=10.1/a%20b")
+
+    def test_a_fetch_that_cannot_even_start_is_unchecked(self):
+        fetch = FakeFetch({"u": links.LinkError("unchecked", "invalid URL")})
+        self.assertEqual(links.check_url("u", fetch), "unchecked")
 
 
 class TestRun(unittest.TestCase):
@@ -109,19 +148,19 @@ class TestRun(unittest.TestCase):
         return rc, buf.getvalue()
 
     def test_a_missing_doi_fails_and_names_file_and_doi(self):
-        fetch = FakeFetch({"https://api.crossref.org/works/10.1257/aer.20220693": 404})
+        fetch = FakeFetch({"https://doi.org/api/handles/10.1257/aer.20220693": 404})
         rc, out = self.run_links(fetch)
         self.assertEqual(rc, 1)
         self.assertIn("kb/explainer/tone-0fdd.md", out)
         self.assertIn("10.1257/aer.20220693", out)
 
     def test_a_url_carrying_a_doi_is_judged_by_crossref_not_the_publisher(self):
-        """Springer answers Python with 404 behind its bot wall; Crossref is authoritative."""
+        """Springer answers Python with 404 behind its bot wall; the DOI registry is authoritative."""
         fetch = FakeFetch({"https://www.aeaweb.org/articles?id=10.1257/aer.20220693": 404})
         rc, _ = self.run_links(fetch)
         self.assertEqual(rc, 0)
         self.assertNotIn("https://www.aeaweb.org/articles?id=10.1257/aer.20220693", fetch.seen)
-        self.assertIn("https://api.crossref.org/works/10.1257/aer.20220693", fetch.seen)
+        self.assertIn("https://doi.org/api/handles/10.1257/aer.20220693", fetch.seen)
 
     def test_unchecked_links_are_reported_but_do_not_fail(self):
         rc, out = self.run_links(FakeFetch({"https://example.org/paper": 403}))
