@@ -85,7 +85,8 @@ document.
 
 ```
 kb/<type>/<slug>-<4hex>.md   source, and the only thing that matters
-tools/kb.py                  check | build | new
+tools/kb.py                  check | build | new | update | review | search
+                             advise | links (opt-in, need network)
 schema/document.schema.json  the frontmatter contract
 templates/                   one per content type
 _site/                       generated; gitignored
@@ -98,11 +99,38 @@ index and the mermaid syntax check.
 ```bash
 python3 tools/kb.py check                              # validate every document
 python3 tools/kb.py build                              # render the site
-PYTHONPATH=tools python3 -m unittest discover -s tests  # 149 tests
+PYTHONPATH=tools python3 -m unittest discover -s tests  # the suite, offline
 ```
 
 CI validates before it publishes, so a document with missing or dishonest
 provenance cannot reach the site.
+
+### Optional: review advice and link checks
+
+Two commands help a human reviewer. Neither is part of `check`, `build` or the
+publish pipeline, and neither ever changes a document.
+
+```bash
+python3 tools/kb.py links [ids...]           # external links resolve, cited DOIs exist
+python3 tools/kb.py advise [ids...]          # Jev review advice (needs TYPESAFE_API_KEY)
+python3 tools/kb.py advise <id> --claim "…"  # does a cited source support this claim?
+```
+
+`advise` uses TypeSafe's [Jev](https://docs.typesafe.ai/introduction), a
+decision model, pinned to `jev-1.13.0`. Per document it checks for hidden
+instructions aimed at AI reviewers (and then withholds all other advice), a
+summary that is vague or describes a different document, and text claiming
+stronger evidence than `confidence_basis` declares. Jev judges topic and fit
+well and truth badly: a summary with one wrong detail still passes, so this is
+not fact-checking. Without a key it prints "skipped" and exits 0.
+
+`links` fails only on a definite answer (404, 410, an unknown host, or a DOI
+Crossref has no record of). Pages that refuse scripts are reported as
+unchecked.
+
+Both run on demand in CI from the **Jev advice and link check** workflow,
+which uses the `TYPESAFE_API_KEY` repository secret. The one live API test runs
+only with `KB_JEV_LIVE=1`.
 
 ## Design record
 

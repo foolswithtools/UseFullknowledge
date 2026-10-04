@@ -10,7 +10,12 @@ every other tool. Do not invent a different filing convention.
 
 - Tooling is pure Python with no install step: `python3 tools/kb.py check`,
   `python3 tools/kb.py build`, `python3 tools/kb.py new <type> "<title>"`.
-- Tests: `PYTHONPATH=tools python3 -m unittest discover -s tests`.
+- Tests: `PYTHONPATH=tools python3 -m unittest discover -s tests`. The suite
+  is offline; the one live Jev test runs only with `KB_JEV_LIVE=1`.
+- `kb.py advise` (Jev) and `kb.py links` are opt-in and need the network.
+  Never call them from `check`, `build` or a required CI job. Question wording
+  and thresholds in `tools/kbtool/advise.py` were validated live; do not
+  reword one without re-running that evaluation.
 - Dependencies are limited to what ships in Debian's `python3-*` packages
   (`pyyaml`, `jsonschema`, `markdown-it-py`). Do not add a dependency without
   saying why the stdlib will not do.
