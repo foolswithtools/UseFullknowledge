@@ -1,9 +1,8 @@
 """TDD tests for the `kb update` command.
 
-The review workflow currently requires manual YAML editing — the exact
-friction that ensures review never happens.  These tests specify the
-behaviour we want: one command to update frontmatter fields on an
-existing document, with automatic updated_at timestamping.
+One command to update frontmatter fields on an existing document, with
+automatic updated_at timestamping.  Review fields are deliberately out of
+scope: recording a review is `kb review` (see test_review.py).
 
 Run:  PYTHONPATH=tools python3 -m unittest tests.test_update -v
 """
@@ -76,35 +75,36 @@ class TestUpdateCommand(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def test_update_changes_review_status(self):
-        """`kb update <id> --set review_status=reviewed` changes the field."""
+    def test_update_changes_a_field(self):
+        """`kb update <id> --set volatility=slow` changes the field."""
         rc = main(["--root", self.root, "update",
                     "kafka-partition-rebalancing-7f3a",
-                    "--set", "review_status=reviewed"])
-        self.assertEqual(rc, 0)
-        text = self.doc_path.read_text()
-        doc = parse(text)
-        self.assertEqual(doc.data["review_status"], "reviewed")
-
-    def test_update_sets_reviewer_for_verified(self):
-        """`kb update --set review_status=verified --reviewer chris --reviewer-kind human`
-        sets all three fields together."""
-        rc = main(["--root", self.root, "update",
-                    "kafka-partition-rebalancing-7f3a",
-                    "--set", "review_status=verified",
-                    "--reviewer", "chris",
-                    "--reviewer-kind", "human"])
+                    "--set", "volatility=slow"])
         self.assertEqual(rc, 0)
         doc = parse(self.doc_path.read_text())
-        self.assertEqual(doc.data["review_status"], "verified")
-        self.assertEqual(doc.data["review_reviewer"], "chris")
-        self.assertEqual(doc.data["review_reviewer_kind"], "human")
+        self.assertEqual(doc.data["volatility"], "slow")
+
+    def test_update_refuses_review_fields_and_points_to_kb_review(self):
+        """Review fields are written only by `kb review`, so AGENTS.md can
+        forbid one clearly named command instead of a flag combination."""
+        import io
+        for field in ("review_status=verified", "review_reviewer=chris",
+                      "review_reviewer_kind=human",
+                      "review_reviewed_at=2026-08-19T14:00:00+00:00"):
+            before = self.doc_path.read_text()
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = main(["--root", self.root, "update",
+                            "kafka-partition-rebalancing-7f3a", "--set", field])
+            self.assertEqual(rc, 1, field)
+            self.assertIn("kb review", buf.getvalue(), field)
+            self.assertEqual(self.doc_path.read_text(), before, field)
 
     def test_update_refreshes_updated_at(self):
         """`kb update` always refreshes updated_at to now."""
         rc = main(["--root", self.root, "update",
                     "kafka-partition-rebalancing-7f3a",
-                    "--set", "review_status=reviewed",
+                    "--set", "volatility=slow",
                     "--now", "2026-08-19T14:00:00+00:00"])
         self.assertEqual(rc, 0)
         doc = parse(self.doc_path.read_text())
@@ -117,8 +117,20 @@ class TestUpdateCommand(unittest.TestCase):
         with redirect_stdout(buf):
             rc = main(["--root", self.root, "update",
                         "nonexistent-id-1234",
-                        "--set", "review_status=reviewed"])
+                        "--set", "volatility=slow"])
         self.assertEqual(rc, 1)
+
+    def test_update_ambiguous_partial_id_is_an_error_not_a_traceback(self):
+        import io
+        (self.doc_path.parent / "kafka-partition-rebalancing-e6a4.md").write_text(
+            self.doc_path.read_text().replace("kafka-partition-rebalancing-7f3a",
+                                              "kafka-partition-rebalancing-e6a4"))
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = main(["--root", self.root, "update", "kafka-partition-rebalancing",
+                        "--set", "volatility=slow"])
+        self.assertEqual(rc, 1)
+        self.assertIn("matches 2 documents", buf.getvalue())
 
     def test_update_unknown_field_returns_error(self):
         """`kb update --set bogus_field=value` returns 1."""
@@ -136,7 +148,7 @@ class TestUpdateCommand(unittest.TestCase):
         original_body = self.doc_path.read_text().split("---\n", 2)[-1]
         rc = main(["--root", self.root, "update",
                     "kafka-partition-rebalancing-7f3a",
-                    "--set", "review_status=reviewed",
+                    "--set", "volatility=slow",
                     "--now", "2026-08-19T14:00:00+00:00"])
         self.assertEqual(rc, 0)
         new_text = self.doc_path.read_text()

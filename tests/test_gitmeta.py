@@ -101,6 +101,12 @@ class TestReconcile(unittest.TestCase):
             reconcile("2026-08-14T06:12:00-07:00", "2026-08-14T13:12:00+00:00")
         )
 
+    def test_z_suffix_is_parsed_as_utc_on_every_supported_python(self):
+        """git and the schema both allow `Z`; Python < 3.11 fromisoformat does not."""
+        self.assertIsNone(
+            reconcile("2026-09-09T17:39:21Z", "2026-09-09T10:39:21-07:00")
+        )
+
     def test_uncommitted_file_is_not_flagged(self):
         self.assertIsNone(reconcile("2026-08-14T06:12:00-07:00", None))
 

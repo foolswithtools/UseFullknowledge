@@ -7,13 +7,13 @@ tags: [tone, central-bank, monetary-policy, trading, fed, communication]
 created_at: "2026-08-20T16:13:15+00:00"
 created_by_tool: loup
 created_by_model: claude-sonnet-4
-updated_at: "2026-09-09T17:15:00+00:00"
+updated_at: "2026-10-04T22:10:05+00:00"
 updated_by_kind: agent
 review_status: unreviewed
 confidence_basis: [primary-source-cited, secondary-source-cited, model-recall-only]
 volatility: slow
 sources:
-  - https://www.aeaweb.org/articles?id=10.1257/aer.20220693
+  - https://www.aeaweb.org/articles?id=10.1257/aer.20220129
   - https://link.springer.com/article/10.1007/s11079-026-09521-4
 ---
 
@@ -81,7 +81,7 @@ A Fed Chair who uses hawkish *tone* while pursuing structural *reform* (framewor
 
 ## References
 
-1. Gorodnichenko, Y., et al. (2023). "Vocal Tone and Economic Policy." *American Economic Review*. https://www.aeaweb.org/articles?id=10.1257/aer.20220693
+1. Gorodnichenko, Y., Pham, T., & Talavera, O. (2023). "The Voice of Monetary Policy." *American Economic Review*, 113(2), 548-584. https://www.aeaweb.org/articles?id=10.1257/aer.20220129
 2. Cho, D., and Jung, S. (2026). "Tone, Sentiment, and Inflation Expectations." *Open Economies Review*. https://link.springer.com/article/10.1007/s11079-026-09521-4
 
 ---

@@ -65,6 +65,11 @@ jobs:
     needs: [test, validate, diagrams]
     steps:
       - uses: actions/checkout@v4
+        with:
+          # `kb.py build` re-runs the full check, KB019 included. In a shallow
+          # clone every file looks last committed at HEAD, so every document
+          # fails as stale. Same reason as the validate job.
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

@@ -30,11 +30,25 @@ FENCE_RE = re.compile(r"^```.*?^```", re.MULTILINE | re.DOTALL)
 
 SECRET_PATTERNS = (
     ("Anthropic API key", re.compile(r"sk-ant-[A-Za-z0-9_\-]{20,}")),
-    ("OpenAI API key", re.compile(r"\bsk-[A-Za-z0-9]{32,}\b")),
+    ("OpenAI API key", re.compile(r"\bsk-(?!ant-)(?:proj-)?[A-Za-z0-9_\-]{32,}")),
     ("AWS access key id", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
     ("GitHub token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{30,}\b")),
     ("private key block", re.compile(r"-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----")),
 )
+
+
+# Personal data is a WARNING, not an ERROR: example addresses and numbers are
+# legitimate in explainers. Code blocks and URLs are stripped first, which is
+# where every false positive in the corpus came from.
+PERSONAL_PATTERNS = (
+    # RFC 2606 example domains are the advised placeholders, so they pass.
+    ("email address", re.compile(
+        r"[A-Za-z0-9._%+-]+@(?![A-Za-z0-9.-]*\bexample\.(?:com|org|net)\b)"
+        r"[A-Za-z0-9.-]+\.[A-Za-z]{2,}")),
+    ("phone number", re.compile(r"(?:\(\d{3}\)\s?|\b\d{3}[-.\s])\d{3}[-.]\d{4}\b")),
+    ("Slack channel name", re.compile(r"(?<![\w#&/])#[a-z][a-z0-9_-]{2,}[a-z0-9]")),
+)
+URL_RE = re.compile(r"\]\([^)]*\)|https?://\S+")
 
 
 class Finding:
@@ -108,6 +122,7 @@ def validate_repo(root, today=None):
     _check_links(root, parsed, findings)
     _check_staleness(parsed, findings, today)
     _check_secrets(parsed, findings)
+    _check_personal_data(parsed, findings)
     _check_placeholders(parsed, findings)
     _check_git_drift(root, parsed, findings)
 
@@ -226,6 +241,19 @@ def _check_secrets(parsed, findings):
                 findings.append(Finding(
                     "KB040", ERROR, rel,
                     f"looks like a committed {label}. Remove it - this repo is public.",
+                ))
+
+
+def _check_personal_data(parsed, findings):
+    for rel, doc in parsed.items():
+        prose = URL_RE.sub("", _strip_code(doc.body))
+        for label, pattern in PERSONAL_PATTERNS:
+            match = pattern.search(prose)
+            if match:
+                findings.append(Finding(
+                    "KB041", WARNING, rel,
+                    f"possible {label} ({match.group(0)}). This repo is public: "
+                    f"remove it, or use a placeholder such as user@example.com.",
                 ))
 
 

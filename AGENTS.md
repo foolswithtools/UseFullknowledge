@@ -95,6 +95,9 @@ your type's extra fields. Optionally `created_by_session`, `sources`, `related`.
 
 **Never write these.** They belong to a human or to the build:
 `review_reviewer`, `review_reviewer_kind`, `review_reviewed_at`, `aliases`.
+A reviewer records a review with `python3 tools/kb.py review <id> --status
+reviewed|verified --reviewer <name> --kind human|agent`; `kb update` refuses
+review fields. An agent never runs `kb review --kind human`.
 
 `created_by_tool` and `created_by_model` are **free text** — use your own real
 name and model id (`cursor`, `gpt-5`, `gemini-cli`, `claude-code`). There is no

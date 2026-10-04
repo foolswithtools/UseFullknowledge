@@ -197,6 +197,67 @@ class TestSecrets(RepoCase):
 
         self.assertNotIn("KB040", self.codes())
 
+    def test_an_openai_project_key_is_an_error(self):
+        """Current OpenAI keys carry `sk-proj-`; the hyphen defeated the old pattern."""
+        self.write("kb/explainer/kafka-partition-rebalancing-7f3a.md",
+                   GOOD + "\nkey: sk-proj-" + "A1b2C3d4" * 6 + "\n")
+
+        self.assertIn("KB040", self.codes(ERROR))
+
+    def test_an_anthropic_key_is_reported_once_not_twice(self):
+        self.write("kb/explainer/kafka-partition-rebalancing-7f3a.md",
+                   GOOD + "\nsk-ant-api03-" + "A" * 40 + "\n")
+
+        self.assertEqual(self.codes(ERROR).count("KB040"), 1)
+
+
+class TestPersonalData(RepoCase):
+    """Email, phone and Slack channels are warnings: example text trips them."""
+
+    def body(self, text):
+        self.write("kb/explainer/kafka-partition-rebalancing-7f3a.md",
+                   GOOD + "\n" + text + "\n")
+
+    def test_an_email_address_in_prose_is_a_warning(self):
+        self.body("Ask chris.lo@private-corp.io for access.")
+
+        self.assertIn("KB041", self.codes(WARNING))
+        self.assertNotIn("KB041", self.codes(ERROR))
+
+    def test_reserved_example_domains_are_not_flagged(self):
+        """The warning tells people to use these, so they must pass (RFC 2606)."""
+        self.body("Write to user@example.com or ops@mail.example.org.")
+
+        self.assertNotIn("KB041", self.codes())
+
+    def test_a_phone_number_is_a_warning(self):
+        self.body("Call 555-123-4567 if it breaks.")
+
+        self.assertIn("KB041", self.codes(WARNING))
+
+    def test_a_slack_channel_is_a_warning(self):
+        self.body("Posted in #aios-loup today.")
+
+        self.assertIn("KB041", self.codes(WARNING))
+
+    def test_placeholders_in_code_blocks_are_not_flagged(self):
+        """The GA4 explainer's sample credentials JSON tripped the old hook."""
+        self.body('```json\n{"client_email": "sa-name@project.iam.gserviceaccount.com"}\n```')
+
+        self.assertNotIn("KB041", self.codes())
+
+    def test_url_fragments_are_not_slack_channels(self):
+        """The Kafka explainer's doc links tripped the old hook."""
+        self.body("- [Consumer groups](https://kafka.apache.org/documentation/"
+                  "#basic_ops_consumer_group)\n- See [the summary](#summary).")
+
+        self.assertNotIn("KB041", self.codes())
+
+    def test_long_bare_numbers_are_not_phone_numbers(self):
+        self.body("The epoch 1693526400 is 2023-09-01.")
+
+        self.assertNotIn("KB041", self.codes())
+
 
 class TestFindingQuality(RepoCase):
     def test_findings_name_the_file_and_the_fix(self):
