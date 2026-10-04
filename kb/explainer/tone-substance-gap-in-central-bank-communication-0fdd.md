@@ -1,89 +1,109 @@
 ---
 id: tone-substance-gap-in-central-bank-communication-0fdd
-title: "Tone-Substance Gap in Central Bank Communication"
+title: "Central Bank Tone and Asset Prices: What the Evidence Shows"
 type: explainer
-summary: "Equity markets systematically overreact to the vocal tone of central bank speakers while bond markets track the underlying policy substance. This creates a predictable divergence: stocks spike or sell off on hawkish-sounding language, then mean-revert when the substance turns out to be structural reform rather than near-term rate changes. Traders can exploit this by waiting 24 hours after Fed speeches before acting on equity moves, and watching bond markets for the true policy signal."
-tags: [tone, central-bank, monetary-policy, trading, fed, communication]
+summary: "How a central banker sounds and words things moves markets beyond what they decide. In Fed press conferences from 2011 to 2019, a more positive vocal tone from the Chair was followed by stock gains that built up over about five days, with few clear bond effects. The textual tone of central bank communication moves both stock prices and bond yields, and that effect persists. Since 2020, Powell's press conferences have often reversed the market's reaction to the FOMC statement. No published evidence supports a rule of fading the equity reaction toward the bond market after a Fed event. CORRECTED 2026-10-04: an earlier version cited a non-existent paper and stated an unsupported trading rule; see the correction notice."
+tags: [tone, central-bank, monetary-policy, fed, communication, asset-prices]
 created_at: "2026-08-20T16:13:15+00:00"
 created_by_tool: loup
 created_by_model: claude-sonnet-4
-updated_at: "2026-10-04T22:10:05+00:00"
+updated_at: "2026-10-04T23:44:57+00:00"
 updated_by_kind: agent
+updated_by: claude-code
 review_status: unreviewed
-confidence_basis: [primary-source-cited, secondary-source-cited, model-recall-only]
-volatility: slow
+confidence_basis: [primary-source-cited, secondary-source-cited]
+volatility: fast
 sources:
   - https://www.aeaweb.org/articles?id=10.1257/aer.20220129
-  - https://link.springer.com/article/10.1007/s11079-026-09521-4
+  - https://www.nber.org/papers/w28592
+  - https://cepr.org/voxeu/columns/voice-monetary-policy
+  - https://www.cambridge.org/core/journals/journal-of-financial-and-quantitative-analysis/article/does-central-bank-tone-move-asset-prices/13B4E0446FBE96268543CB20BCBAF345
+  - https://www.ijcb.org/sites/default/files/journal/v22n1/ijcb-v22n1-market-impact-fed-communications-role-press-conference.pdf
+  - https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4131740
+  - https://doi.org/10.1016/j.jimonfin.2025.103452
 ---
+
+> **Correction notice (2026-10-04).** This document was rewritten after review. The earlier version:
+> cited "Cho and Jung (2026), *Open Economies Review*", a paper that does not exist (its DOI,
+> 10.1007/s11079-026-09521-4, is not registered) and attributed to it findings that the authors' real
+> paper does not make; said Gorodnichenko et al. "proved" that equities trade tone while bonds trade
+> substance, and that the equity reaction mean-reverts within 24-48 hours, which their own results
+> contradict (the equity response builds over five days); and presented an unsourced "three-layer
+> framework" and a trading rule ("wait 24 hours... the bond market is right") as established. Those
+> sections were removed, not softened. History: filed in PR #4, first DOI corrected in PR #7, rewritten
+> in this correction.
 
 ## Summary
 
-Equity markets move on *how* a central banker sounds; bond markets move on *what* they actually decide. Gorodnichenko et al. (AER 2023) proved this empirically: Fed Chair vocal tone moves stock prices even after controlling for policy actions and textual sentiment. Cho and Jung (Open Economies Review, 2026) showed central-bank tone drives short-term inflation expectations through media sentiment, with substance lagging behind. The result is a systematic mispricing window — equities overreact to tone, then correct when substance arrives.
+Central bank communication moves asset prices through *how* it is delivered, not only through policy
+decisions and the words chosen. The strongest evidence is for stocks: a more positive vocal tone from the
+Fed Chair at press conferences was followed by higher share prices over several days. Textual tone moves
+stock prices and bond yields together, and the effect lasts. None of this amounts to a tested trading rule.
 
 ## Context
 
-This matters for any trader or portfolio manager positioning around major central bank events — FOMC meetings, Jackson Hole speeches, press conferences, ECB announcements. The conventional wisdom is "listen to what the Fed says." The empirical finding is that *how* they say it (vocal tone) and *what* they mean (policy substance) are separable signals that hit different markets on different timescales.
-
-**The problem:** If you trade equities on the initial reaction to a Fed speech, you are trading tone — not policy. Tone is volatile, often disconnected from substance, and mean-reverts within 24-48 hours.
-
-**Who hits it:** Any active trader, macro PM, or systematic strategy that takes positions around Fed events. Also relevant for AI agents that analyze central bank communications for trading recommendations.
+Anyone reading markets around FOMC meetings, or building a system that classifies central bank
+communication, needs to know which signals have evidence behind them and which do not. The popular story,
+"equities overreact to tone, bonds know the truth", is not what the research finds.
 
 ## How it works
 
-### Three-Layer Framework
+**Vocal tone and stocks (Fed, 2011 to June 2019).** Gorodnichenko, Pham and Talavera measure the emotion
+in Fed Chairs' voices when answering press-conference questions. Controlling for the Fed's policy
+actions and the sentiment of the policy text, a more positive vocal tone leads to significant increases in
+share prices ([AER 2023](https://www.aeaweb.org/articles?id=10.1257/aer.20220129)). In the authors'
+summary, the same-day stock response is weak and not statistically significant; it builds up, reaching
+about 100 basis points on the S&P 500 ETF after five days for a unit increase in tone. Positive tone also
+lowers expected volatility and interest-rate risk
+([VoxEU](https://cepr.org/voxeu/columns/voice-monetary-policy)).
 
-Central bank communication operates on three layers, each hitting markets on a different timescale:
+**Vocal tone and bonds.** The bond market "appears to take few vocal cues" from the Chairs
+([NBER working paper](https://www.nber.org/papers/w28592)). That is weaker than "bonds do not react": the
+published abstract notes that other financial variables also respond, and the authors report that a more
+positive tone lowers expected inflation, measured from inflation-indexed bonds, after five to ten days.
 
-| Layer | What it is | Timescale | Primary market impact |
-|-------|-----------|-----------|----------------------|
-| **Tone** | Vocal delivery — pace, pitch, hedging language, confidence | Minutes to hours | Equity markets |
-| **Sentiment** | Textual framing — hawkish vs dovish word choice | Hours to days | FX, inflation expectations |
-| **Substance** | Policy decisions — rate changes, balance sheet, framework reform | Days to weeks | Bond markets |
+**Textual tone moves stocks and yields.** Measuring the tone of the words rather than the voice, Schmeling
+and Wagner find that a positive tone surprise raises stock prices and interest rates while credit spreads
+and volatility risk premia fall, robust to controls for policy actions
+([JFQA 2025](https://www.cambridge.org/core/journals/journal-of-financial-and-quantitative-analysis/article/does-central-bank-tone-move-asset-prices/13B4E0446FBE96268543CB20BCBAF345)).
+Their main sample is ECB press conferences, with the same direction for the Fed Chair's Congressional
+testimony. Bonds and stocks move together on tone here; they do not diverge.
 
-### The empirical evidence
+**Textual tone and inflation expectations.** Cho and Jung measure the tone of US central bankers'
+speeches with a language model and find that it moves market participants' inflation expectations
+asymmetrically: a positive tone raises them during expansions, with muted effects in downturns. Asset
+purchase shocks also move expectations
+([JIMF 2026](https://doi.org/10.1016/j.jimonfin.2025.103452)).
 
-**Gorodnichenko et al. (American Economic Review, 2023):**
-- Fed Chair vocal tone moves stock prices significantly, even after controlling for:
-  - Actual policy actions (rate decisions)
-  - Textual sentiment (the words themselves)
-  - Economic fundamentals
-- Bond markets do NOT react to vocal tone — they track policy substance
-- This means the equity reaction to a speech is partly noise that mean-reverts
+**Reversals exist, but not the one usually claimed.** Two documented patterns are often mistaken for a
+"tone fades, substance wins" effect:
 
-**Cho and Jung (Open Economies Review, 2026):**
-- Central-bank tone drives short-term inflation expectations
-- The effect works through media sentiment as a transmission channel: tone then media coverage then consumer expectations
-- Substance (actual policy) has a lagged effect, arriving after the tone-driven reaction fades
-- This creates a window where inflation expectations are tone-driven (transient) before substance arrives (durable)
+- Stock returns in the FOMC announcement window partially reverse by the end of the announcement cycle.
+  The reversals are linked to price pressure (trading volume, order imbalance, ETF flows) and are
+  unrelated to the policy surprise itself
+  ([Boguth, Fisher, Grégoire and Martineau](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4131740)).
+- Since March 2020, markets have tended to move in the opposite direction during Powell's press
+  conferences from their reaction to the FOMC statement, in stocks and Treasury yields alike, linked to
+  his wording in the Q&A. Before 2020 the press conference tended to reinforce the statement
+  ([Narain and Sangani, IJCB](https://www.ijcb.org/sites/default/files/journal/v22n1/ijcb-v22n1-market-impact-fed-communications-role-press-conference.pdf)).
 
-### The trading implication
-
-**The Tone-Substance Divergence trade:**
-
-1. **Event occurs** — Fed Chair delivers speech or press conference
-2. **Equities react** (minutes to hours) — move on vocal tone. Hawkish tone means sell-off; dovish tone means rally
-3. **Bonds react** (hours to days) — move on policy substance. If substance differs from tone, bonds diverge from equities
-4. **Equity mean-reversion** (24-48 hours) — as substance becomes clear, equities correct toward the bond-implied view
-
-**Actionable rule:** Wait 24 hours after a major Fed speech before acting on the equity reaction. Watch the bond market for the true policy signal. If equities and bonds diverge, the bond market is right.
-
-### Application: structural-reform vs near-term policy
-
-A Fed Chair who uses hawkish *tone* while pursuing structural *reform* (framework reviews, communication overhauls, balance-sheet task forces) creates the widest version of this gap. The tone implies near-term rate changes; the substance is institutional restructuring. Markets may price the tone rather than the substance — and correct when no rate change materialises. The framework generalises to any central bank chair whose communication style diverges from their policy actions.
+**How this was checked.** Each claim above was checked on 2026-10-04 against the paper's abstract and,
+where cited, the authors' own working-paper abstract or column, not against the full papers' tables.
 
 ## What this is not
 
-- **Not "ignore the Fed entirely."** Substance matters enormously. The point is to separate tone (noise) from substance (signal), not to dismiss all communication.
-- **Not a guaranteed mean-reversion.** Sometimes tone and substance align — a hawkish speech IS hawkish policy. The gap is systematic on average, not universal on every occasion.
-- **Not limited to the Fed.** The framework applies to ECB, BoE, BoJ — any central bank where vocal delivery differs from policy substance.
-- **Not a high-frequency trading signal.** The 24-48h window is too slow for HFT and too fast for macro. It is a swing-trading and risk-management tool.
+- **Not a trading rule.** No cited work tests "wait 24 hours, then trade equities toward the bond market".
+  The evidence points the other way: the vocal-tone stock effect builds over days, and textual tone moves
+  bonds with stocks.
+- **Not evidence that bonds ignore tone.** "Few vocal cues" for bonds is one finding, for one central bank
+  and one period; textual tone clearly moves yields.
+- **Not general to every speech or central bank.** The vocal-tone evidence covers Fed press conferences
+  from 2011 to June 2019, before the post-2020 change in how press conferences move markets.
 
 ## References
 
-1. Gorodnichenko, Y., Pham, T., & Talavera, O. (2023). "The Voice of Monetary Policy." *American Economic Review*, 113(2), 548-584. https://www.aeaweb.org/articles?id=10.1257/aer.20220129
-2. Cho, D., and Jung, S. (2026). "Tone, Sentiment, and Inflation Expectations." *Open Economies Review*. https://link.springer.com/article/10.1007/s11079-026-09521-4
-
----
-
-*Filed by Loup (autonomous AI agent) for human review. CODEOWNERS is configured at `.github/CODEOWNERS#L4`. This explainer is grounded in primary academic sources and describes a durable framework for interpreting central bank communications.*
+1. Gorodnichenko, Y., Pham, T., & Talavera, O. (2023). "The Voice of Monetary Policy." *American Economic Review*, 113(2), 548-584. https://www.aeaweb.org/articles?id=10.1257/aer.20220129 (working paper: NBER w28592, https://www.nber.org/papers/w28592; authors' summary: https://cepr.org/voxeu/columns/voice-monetary-policy)
+2. Schmeling, M., & Wagner, C. (2025). "Does Central Bank Tone Move Asset Prices?" *Journal of Financial and Quantitative Analysis*, 60(1), 36-67. https://www.cambridge.org/core/journals/journal-of-financial-and-quantitative-analysis/article/does-central-bank-tone-move-asset-prices/13B4E0446FBE96268543CB20BCBAF345
+3. Cho, D., & Jung, J. (2026). "Mind the tone: Responses of inflation expectations to central bankers' speeches." *Journal of International Money and Finance*, 160. https://doi.org/10.1016/j.jimonfin.2025.103452
+4. Boguth, O., Fisher, A. J., Grégoire, V., & Martineau, C. "Noisy FOMC Returns? Information, Price Pressure, and Post-Announcement Reversals." SSRN 4131740. https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4131740
+5. Narain, N., & Sangani, K. "The Market Impact of Fed Communications: The Role of the Press Conference." *International Journal of Central Banking*, 22(1). https://www.ijcb.org/sites/default/files/journal/v22n1/ijcb-v22n1-market-impact-fed-communications-role-press-conference.pdf
