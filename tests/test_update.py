@@ -120,6 +120,18 @@ class TestUpdateCommand(unittest.TestCase):
                         "--set", "volatility=slow"])
         self.assertEqual(rc, 1)
 
+    def test_update_ambiguous_partial_id_is_an_error_not_a_traceback(self):
+        import io
+        (self.doc_path.parent / "kafka-partition-rebalancing-e6a4.md").write_text(
+            self.doc_path.read_text().replace("kafka-partition-rebalancing-7f3a",
+                                              "kafka-partition-rebalancing-e6a4"))
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = main(["--root", self.root, "update", "kafka-partition-rebalancing",
+                        "--set", "volatility=slow"])
+        self.assertEqual(rc, 1)
+        self.assertIn("matches 2 documents", buf.getvalue())
+
     def test_update_unknown_field_returns_error(self):
         """`kb update --set bogus_field=value` returns 1."""
         import io

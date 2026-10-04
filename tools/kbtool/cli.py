@@ -152,7 +152,11 @@ def cmd_update(args):
     from .identity import resolve_id
 
     root = pathlib.Path(args.root) if args.root else pathlib.Path.cwd()
-    doc_path = resolve_id(root, args.id)
+    try:
+        doc_path = resolve_id(root, args.id)
+    except ValueError as exc:
+        print(f"Error: {exc}")
+        return 1
     if doc_path is None:
         print(f"Error: no document matching id '{args.id}'")
         return 1
