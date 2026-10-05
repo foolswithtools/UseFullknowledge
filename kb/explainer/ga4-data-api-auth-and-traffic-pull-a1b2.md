@@ -2,40 +2,63 @@
 id: ga4-data-api-auth-and-traffic-pull-a1b2
 title: "GA4 Data API: Authentication and Traffic Data Pull"
 type: explainer
-summary: "How to authenticate with Google Analytics 4 Data API using service account credentials, pull traffic data by channel/source/medium, and troubleshoot common errors. Covers credential setup, GitHub Secrets integration, and key metrics for lead management analysis."
+summary: "How to authenticate with the Google Analytics 4 Data API (v1beta) using a service account, pull traffic data by channel, source and medium, and troubleshoot common errors. Covers enabling the API, granting the service account Viewer access to the property, storing credentials as GitHub Secrets, and the metrics that matter for lead analysis, including keyEvents, which replaced the deprecated conversions metric in May 2024."
 tags: [ga4, google-analytics, api, authentication, traffic-analysis, lead-management]
 created_at: "2026-09-06T22:10:00+00:00"
 created_by_tool: loup
 created_by_model: claude-sonnet-4-6
-updated_at: "2026-09-09T17:20:00+00:00"
+updated_at: "2026-10-05T00:09:45+00:00"
 updated_by_kind: agent
+updated_by: claude-code
 review_status: unreviewed
-confidence_basis: [model-recall-only, primary-source-cited]
+confidence_basis: [primary-source-cited, model-recall-only]
 volatility: fast
 sources:
   - https://developers.google.com/analytics/devguides/reporting/data/v1
+  - https://developers.google.com/analytics/devguides/reporting/data/v1/quickstart
+  - https://developers.google.com/analytics/devguides/reporting/data/v1/api-schema
+  - https://developers.google.com/analytics/devguides/reporting/data/v1/changelog
+  - https://developers.google.com/analytics/devguides/reporting/data/v1/property-id
+  - https://developers.google.com/analytics/devguides/reporting/data/v1/errors
+  - https://support.google.com/analytics/answer/9305587
+  - https://support.google.com/analytics/answer/12844695
 ---
+
+> **Correction notice (2026-10-04).** Audited against Google's documentation and corrected. The earlier
+> version used the `conversions` metric, deprecated in May 2024 and replaced by `keyEvents`; listed
+> `purchase`, `sign_up` and `generate_lead` as default conversions (Google's documented defaults are
+> `first_open` and `purchase`); gave the old "Mark as conversion" UI path; omitted the step of enabling
+> the Data API in the Google Cloud project; and listed a "404 Property Not Found" error that Google does
+> not document. It also cited one overview page for claims that page does not cover; each claim now
+> cites the page that supports it. Everything else checked out.
 
 ## Summary
 
-GA4 Data API (v1beta) requires a Google Cloud service account with JSON credentials and the GA4 Property ID. You pull traffic data by specifying date ranges, dimensions (channel, source, medium), and metrics (sessions, users, pageviews, conversions). Credentials can be stored as GitHub Secrets for CI/CD pipelines.
+The GA4 Data API (v1beta) is called with a Google Cloud service account that has Viewer access to the
+GA4 property. You request a date range, dimensions (channel, source, medium) and metrics (sessions,
+users, page views, key events). Credentials can be stored as GitHub Secrets for CI pipelines.
 
 ## Context
 
-Agents and developers pulling Google Analytics 4 traffic data for lead management analysis — channel attribution, traffic quality assessment, conversion tracking. The main challenge is credential setup: GA4 uses service accounts (not API keys), and the credential format must be handled correctly.
+Agents and developers pulling Google Analytics 4 traffic data for lead analysis: channel attribution,
+traffic quality and key-event tracking. The usual stumbling block is credential setup: the Data API is
+called with a service account, and the private key has to survive being stored as a secret.
 
 ## How it works
 
 ### Authentication
 
-GA4 Data API uses Google Cloud service accounts:
+1. **Enable the Google Analytics Data API** (`analyticsdata.googleapis.com`) in your Google Cloud project
+   ([quickstart](https://developers.google.com/analytics/devguides/reporting/data/v1/quickstart)).
+2. **Create a service account** in that project
+   ([Google Cloud](https://cloud.google.com/iam/docs/service-accounts-create)) and **generate a JSON key**.
+3. **Add the service account's email to the GA4 property** under Admin → Property access management,
+   with the Viewer role. Viewers can see report data through the user interface or the APIs
+   ([GA4 help](https://support.google.com/analytics/answer/9305587)).
+4. **Authenticate with the JSON credentials.** The client library's default OAuth scopes cover the Data
+   API, so you do not need to set scopes yourself.
 
-1. **Create a service account** in Google Cloud Console
-2. **Generate a JSON key** for the service account
-3. **Add the service account email** to your GA4 property as a user (Viewer role)
-4. **Use the JSON credentials** to authenticate API calls
-
-**Credential format** (JSON):
+**Credential format** (JSON key file):
 ```json
 {
   "type": "service_account",
@@ -49,36 +72,38 @@ GA4 Data API uses Google Cloud service accounts:
 }
 ```
 
-### GitHub Secrets Integration
+### GitHub Secrets integration
 
-Store credentials as GitHub Secrets (never in code):
+This part is general practice rather than Google documentation. Store credentials as secrets, never in
+code:
 
 | Secret | Description |
 |--------|-------------|
-| `GA4_PROPERTY_ID` | Numeric GA4 property ID (found in GA4 → Admin → Property Settings) |
-| `GA4_CLIENT_EMAIL` | Service account email from JSON key |
-| `GA4_PRIVATE_KEY` | Private key from JSON key (includes `\n` characters) |
+| `GA4_PROPERTY_ID` | Numeric GA4 property ID, shown in Admin → Property Settings ([how to find it](https://developers.google.com/analytics/devguides/reporting/data/v1/property-id)); not the `G-` measurement ID |
+| `GA4_CLIENT_EMAIL` | Service account email from the JSON key |
+| `GA4_PRIVATE_KEY` | Private key from the JSON key |
 
-**Important:** When storing the private key as a GitHub Secret, the `\n` characters in the key may need to be converted to actual newlines at runtime:
-```python
-private_key = private_key.replace('\\n', '\n')
-```
+A private key pasted into a secret often arrives with literal `\n` sequences instead of line breaks.
+Convert them once at runtime, as in the sample below.
 
-### API Endpoint: Run Report
+### Run a report
 
 ```python
+import os
+
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.analytics.data_v1beta.types import DateRange, Dimension, Metric, RunReportRequest
 from google.oauth2 import service_account
 
+property_id = os.environ["GA4_PROPERTY_ID"]
+client_email = os.environ["GA4_CLIENT_EMAIL"]
+private_key = os.environ["GA4_PRIVATE_KEY"].replace("\\n", "\n")
+
 credentials = service_account.Credentials.from_service_account_info({
     "type": "service_account",
-    "private_key": private_key.replace('\\n', '\n'),
+    "private_key": private_key,
     "client_email": client_email,
-    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
     "token_uri": "https://oauth2.googleapis.com/token",
-    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-    "client_x509_cert_url": ""
 })
 
 client = BetaAnalyticsDataClient(credentials=credentials)
@@ -95,7 +120,7 @@ request = RunReportRequest(
         Metric(name="sessions"),
         Metric(name="totalUsers"),
         Metric(name="screenPageViews"),
-        Metric(name="conversions"),
+        Metric(name="keyEvents"),
         Metric(name="averageSessionDuration"),
     ],
 )
@@ -103,59 +128,74 @@ request = RunReportRequest(
 response = client.run_report(request)
 ```
 
-### Key Dimensions for Lead Management
+Install the libraries with `pip install google-analytics-data google-auth`.
 
-| Dimension | Description | Use Case |
+### Key dimensions for lead analysis
+
+Names as listed in the [API schema](https://developers.google.com/analytics/devguides/reporting/data/v1/api-schema):
+
+| Dimension | Description | Use case |
 |-----------|-------------|----------|
-| `sessionDefaultChannelGroup` | Channel classification (Paid Search, Organic, Social, etc.) | Channel-level attribution |
-| `sessionSource` | Traffic source (Google, Facebook, direct) | Source-level attribution |
+| `sessionDefaultChannelGroup` | Channel classification (Paid Search, Organic Search, Organic Social, etc.) | Channel-level attribution |
+| `sessionSource` | Traffic source (google, facebook, direct) | Source-level attribution |
 | `sessionMedium` | Medium (cpc, organic, referral) | Medium-level analysis |
-| `eventName` | Specific events fired | Conversion breakdown by event type |
+| `eventName` | Name of the event | Key-event breakdown by event |
 | `pageTitle` | Page title | Content performance |
-| `landingPagePlusQueryString` | Landing page URL | Entry point analysis |
+| `landingPagePlusQueryString` | Landing page path with query string | Entry-point analysis |
 
-### Key Metrics
+### Key metrics
 
 | Metric | Description |
 |--------|-------------|
 | `sessions` | Number of sessions |
-| `totalUsers` | Unique users |
-| `screenPageViews` | Total page views |
-| `conversions` | Count of conversion events |
-| `averageSessionDuration` | Average session duration (seconds) |
+| `totalUsers` | Distinct users |
+| `screenPageViews` | Page and screen views |
+| `keyEvents` | Count of key events (formerly `conversions`) |
+| `averageSessionDuration` | Average session duration, in seconds |
 
-### Understanding "Conversions"
+### Key events (formerly "conversions")
 
-In GA4, conversions are events explicitly marked as conversion events in GA4 property settings. By default, GA4 marks `purchase`, `sign_up`, and `generate_lead` as conversions. You can mark any custom event as a conversion.
+GA4 renamed conversions to **key events**. In the Data API, `conversions` was deprecated on 2024-05-06
+and replaced by `keyEvents`, along with related metrics such as `sessionConversionRate` →
+`sessionKeyEventRate` ([changelog](https://developers.google.com/analytics/devguides/reporting/data/v1/changelog)).
 
-To see which events are marked as conversions:
- GA4 → Admin → Events → look for events with "Mark as conversion" toggled ON
+Some events, such as `first_open` and `purchase`, are marked as key events by default; you can mark any
+event as a key event
+([API schema](https://developers.google.com/analytics/devguides/reporting/data/v1/api-schema)). To see
+or change them: Admin → Data display → Events, then toggle **Mark as key event**
+([GA4 help](https://support.google.com/analytics/answer/12844695)).
 
-To pull conversions broken down by event name, add `Dimension(name="eventName")` to the request.
+To break key events down by event, add `Dimension(name="eventName")` to the request.
 
-### Installing Required Libraries
+## Common errors and fixes
 
-```bash
-pip install google-analytics-data google-auth
-```
+Google documents the API's error responses as 400, 401, 403, 429 and 500
+([errors](https://developers.google.com/analytics/devguides/reporting/data/v1/errors)).
 
-## Common Errors and Fixes
-
-| Error | Cause | Fix |
-|-------|-------|-----|
-| 403 Permission Denied | Service account not added to GA4 property | Add service account email as Viewer in GA4 → Admin → Property Access Management |
-| 404 Property Not Found | Wrong property ID format | Use numeric property ID (found in GA4 → Admin → Property Settings), not measurement ID |
-| Invalid private key | `\n` not converted to newlines | Use `private_key.replace('\\n', '\n')` |
-| No data returned | Date range has no data or property ID is wrong | Verify property ID and date range; check service account has access |
+| Symptom | Likely cause | Fix |
+|---------|-------------|-----|
+| 403 `PERMISSION_DENIED` | The service account has no access to the property, or the Data API is not enabled in the project | Add the service account email as a Viewer under Admin → Property access management; enable the API |
+| 400 `INVALID_ARGUMENT` | A malformed request, such as an unknown dimension or metric name, or `conversions` on code that should now use `keyEvents` | Check names against the API schema |
+| Error or no data when using a `G-XXXX` ID | A measurement ID was used instead of the numeric property ID | Use the numeric property ID from Admin → Property Settings |
+| Invalid private key | Literal `\n` sequences were not converted to line breaks | Convert them once, as in the sample |
+| No rows returned | The date range has no data | Check the date range and that the property collects data |
 
 ## What this is not
 
-This is not a guide to GA4's Measurement Protocol (for sending custom events to GA4) or GA4's Admin API (for managing properties). This covers only the Data API for pulling report data.
+This is not a guide to GA4's Measurement Protocol (for sending events to GA4) or the Admin API (for
+managing properties). It covers only the Data API for pulling report data.
 
-This is also not a guide to Universal Analytics (UA), which is deprecated. GA4 Data API is the replacement for UA's Reporting API.
+It is also not about Universal Analytics, which the Data API does not support; Universal Analytics used
+the Reporting API v4.
 
 ## References
 
-- GA4 Data API docs: https://developers.google.com/analytics/devguides/reporting/data/v1
-- GA4 Data API reference: https://developers.google.com/analytics/devguides/reporting/data/v1/api-schema
-- Service account setup: https://cloud.google.com/iam/docs/creating-managing-service-accounts
+- GA4 Data API overview: https://developers.google.com/analytics/devguides/reporting/data/v1
+- Quickstart (enabling the API): https://developers.google.com/analytics/devguides/reporting/data/v1/quickstart
+- API schema (dimensions, metrics, default key events): https://developers.google.com/analytics/devguides/reporting/data/v1/api-schema
+- Changelog (conversions → keyEvents): https://developers.google.com/analytics/devguides/reporting/data/v1/changelog
+- Property ID: https://developers.google.com/analytics/devguides/reporting/data/v1/property-id
+- Errors: https://developers.google.com/analytics/devguides/reporting/data/v1/errors
+- Access management and roles: https://support.google.com/analytics/answer/9305587
+- Key events: https://support.google.com/analytics/answer/12844695
+- Creating service accounts: https://cloud.google.com/iam/docs/service-accounts-create

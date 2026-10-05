@@ -2,137 +2,193 @@
 id: hubspot-crm-api-auth-and-data-pull-3f7a
 title: "HubSpot CRM API: Authentication and Contact Data Pull"
 type: explainer
-summary: "How to authenticate with HubSpot's v3 CRM API using Private App Access Tokens, pull contacts with properties, and troubleshoot common errors (401, 400, 403). Includes read-only scope guidance for lead management analysis."
+summary: "How to authenticate to HubSpot's CRM API for read-only access to your own account (a service key or a legacy private app token, sent as a Bearer token; account API keys stopped working in 2022), list contacts with chosen properties and cursor pagination, filter by creation date with the Search API, and read 401, 403 and 429 errors. HubSpot now date-versions its APIs (e.g. /crm/objects/2026-09/...); the older /crm/v3/ paths still work."
 tags: [hubspot, crm, api, authentication, lead-management]
 created_at: "2026-09-06T22:08:00+00:00"
 created_by_tool: loup
 created_by_model: claude-sonnet-4-6
-updated_at: "2026-09-09T17:39:20+00:00"
+updated_at: "2026-10-05T00:11:34+00:00"
 updated_by_kind: agent
+updated_by: claude-code
 review_status: unreviewed
-confidence_basis: [model-recall-only, primary-source-cited]
+confidence_basis: [primary-source-cited]
 volatility: fast
 sources:
-  - https://developers.hubspot.com/docs/guides/api/private-apps
+  - https://developers.hubspot.com/docs/apps/developer-platform/build-apps/authentication/account-service-keys
+  - https://developers.hubspot.com/docs/apps/legacy-apps/private-apps/overview
+  - https://developers.hubspot.com/docs/apps/legacy-apps/authentication/scopes
+  - https://developers.hubspot.com/docs/developer-tooling/platform/versioning
+  - https://developers.hubspot.com/docs/api-reference/latest/crm/objects/contacts/guide
+  - https://developers.hubspot.com/docs/api-reference/latest/crm/search-the-crm
+  - https://developers.hubspot.com/docs/developer-tooling/platform/usage-guidelines
+  - https://developers.hubspot.com/changelog/upcoming-api-key-sunset
+  - https://knowledge.hubspot.com/properties/understand-traffic-source-properties
 ---
+
+> **Correction notice (2026-10-04).** Rewritten after an audit against HubSpot's current documentation.
+> The earlier version said a valid token is "alphanumeric, no dashes" and that a dashed token is an API
+> key to replace; current tokens look like `pat-na1-xxxxxxxx-xxxx-...` and do contain dashes, so that
+> advice would have had readers discard working tokens. It also said the `propertiesWithHistory`
+> parameter causes HTTP 400 (it is a documented, valid parameter), that the contacts API cannot filter by
+> date (the Search API can), and used `leadsource`, which is not a HubSpot default contact property. Its
+> creation path, rate limits and lifecycle-stage values were out of date, and its three HubSpot links
+> had stopped resolving.
 
 ## Summary
 
-HubSpot's v3 CRM API requires a Private App Access Token (not the deprecated API key). For read-only lead management analysis, you need the `crm.objects.contacts.read` scope. The API returns JSON with contacts and their properties.
+To read contacts from your own HubSpot account, create a **service key** (or a legacy private app) with
+the `crm.objects.contacts.read` scope and send its token as `Authorization: Bearer <token>`. List
+contacts with `GET /crm/objects/2026-09/contacts`, up to 100 per page, following the `paging.next.after`
+cursor. To pull contacts created in a date range, use the Search API instead of downloading everything.
 
 ## Context
 
-Agents and developers integrating with HubSpot CRM to pull lead/contact data for analysis — attribution, lead drop diagnosis, conversion funnel mapping. The most common failure is using a legacy API key instead of a Private App token, resulting in HTTP 401.
+Agents and developers pulling HubSpot contact data for lead analysis: attribution, lead-volume drops,
+funnel mapping. The usual failures are an old account API key (they no longer work), a token without the
+right scope (403), and hitting rate limits while paginating the whole database.
 
 ## How it works
 
 ### Authentication
 
-HubSpot has two authentication methods:
+For read-only access to a single HubSpot account you own, HubSpot offers:
 
-1. **API Key** (LEGACY, DEPRECATED) — Format: `xxxxx-xxxxx-xxxxx-xxxxx-xxxxx`. Does NOT work with v3 API endpoints. If your token has dashes and looks like a UUID, it's an API key. Replace it.
+- **Service keys** (newest). In HubSpot, go to Development → Keys → Service keys → Create service key,
+  then add scopes. They are meant for querying the REST APIs directly, are restricted with object scopes
+  such as `crm.objects.contacts.read`, and can be rotated
+  ([service keys](https://developers.hubspot.com/docs/apps/developer-platform/build-apps/authentication/account-service-keys)).
+- **Legacy private apps**, still supported: Development → Legacy apps → Create legacy app → Private
+  ([legacy private apps](https://developers.hubspot.com/docs/apps/legacy-apps/private-apps/overview)).
+- **OAuth** with a public app, for software used across many HubSpot accounts (out of scope here).
 
-2. **Private App Access Token** (CURRENT) — A long alphanumeric string (no dashes). Created via HubSpot → Settings → Integrations → Private Apps → Create Private App. Required for all v3 API calls.
-
-**For read-only lead management analysis, request these scopes:**
-- `crm.objects.contacts.read` — read contacts
-- `crm.objects.companies.read` — read companies (optional)
-- `crm.objects.deals.read` — read deals (optional)
-
-Do NOT request write scopes unless you need to create/update records.
-
-### API Endpoint: List Contacts
+Either token is sent the same way:
 
 ```
-GET https://api.hubapi.com/crm/v3/objects/contacts
+Authorization: Bearer pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 ```
 
-**Required headers:**
+Tokens start with `pat-` and a region code and contain dashes; HubSpot's own example shows this form.
+**Account API keys** (the old `hapikey`) were sunset on November 30, 2022 and no longer work
+([changelog](https://developers.hubspot.com/changelog/upcoming-api-key-sunset)).
+
+**Scopes for read-only lead analysis**
+([scopes](https://developers.hubspot.com/docs/apps/legacy-apps/authentication/scopes)):
+
+- `crm.objects.contacts.read`: read contacts
+- `crm.objects.companies.read`: read companies (optional)
+- `crm.objects.deals.read`: read deals (optional)
+
+Don't add write scopes unless you need to create or update records.
+
+### API versions
+
+HubSpot replaced `v1`/`v3`-style versions with date-based ones, such as `/crm/objects/2026-09/contacts`.
+All the older semantically versioned APIs "are still supported and available at their previous URLs", so
+`/crm/v3/objects/contacts` keeps working
+([versioning](https://developers.hubspot.com/docs/developer-tooling/platform/versioning)). Check the API
+reference for the current date version.
+
+### List contacts
+
 ```
-Authorization: Bearer YOUR_PRIVATE_APP_TOKEN
-Content-Type: application/json
+GET https://api.hubapi.com/crm/objects/2026-09/contacts?limit=100&properties=createdate,email,lifecyclestage
 ```
 
-**Query parameters:**
-- `limit` — max 100 per page (default 10)
-- `properties` — comma-separated list of property names to include
-- `after` — pagination cursor from previous response
+- `limit`: up to 100 contacts per request; the default is 10
+  ([contacts guide](https://developers.hubspot.com/docs/api-reference/latest/crm/objects/contacts/guide)).
+- `properties`: comma-separated property names to return.
+- `after`: the cursor from the previous response's `paging.next.after`.
+- `propertiesWithHistory`: also valid; it returns past values of the listed properties and lowers the
+  maximum number of contacts per request.
 
-**Common properties to request:**
-- `createdate` — when the contact was created
-- `email` — contact email
-- `firstname`, `lastname` — name
-- `company` — company name
-- `leadsource` — where the lead came from
-- `lifecyclestage` — lead lifecycle stage (lead, MQL, SQL, opportunity, customer)
+**Useful contact properties**
 
-**Important:** Do NOT use `propertiesWithHistory` parameter — it causes HTTP 400 errors. Use `properties` only.
+- `createdate`, `email`, `firstname`, `lastname`, `company`
+- `lifecyclestage`: default values are `subscriber`, `lead`, `marketingqualifiedlead`,
+  `salesqualifiedlead`, `opportunity`, `customer` and `evangelist`
+  ([contacts guide](https://developers.hubspot.com/docs/api-reference/latest/crm/objects/contacts/guide)).
+- **Original Traffic Source**, the first known source through which the contact interacted with your
+  business ([traffic source properties](https://knowledge.hubspot.com/properties/understand-traffic-source-properties)).
+  Its internal name is `hs_analytics_source`; confirm it in your account with
+  `GET /crm/properties/2026-09/0-1/hs_analytics_source`. There is no default `leadsource` property;
+  that name comes from Salesforce.
 
 ### Pagination
 
-The API returns up to 100 contacts per page. To get all contacts:
-
 ```python
-all_contacts = []
-after = None
+import json
+import urllib.parse
+import urllib.request
+
+TOKEN = "pat-na1-..."  # from a secret, never committed
+BASE = "https://api.hubapi.com/crm/objects/2026-09/contacts"
+PROPS = "createdate,email,firstname,lastname,company,lifecyclestage,hs_analytics_source"
+
+def get(url):
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {TOKEN}"})
+    with urllib.request.urlopen(req) as resp:
+        return json.loads(resp.read().decode())
+
+contacts, after = [], None
 while True:
-    params = {"limit": 100, "properties": "createdate,email,firstname,lastname,company,leadsource,lifecyclestage"}
+    params = {"limit": 100, "properties": PROPS}
     if after:
         params["after"] = after
-    # ... make request ...
-    all_contacts.extend(data["results"])
+    data = get(f"{BASE}?{urllib.parse.urlencode(params)}")
+    contacts.extend(data.get("results", []))
     after = data.get("paging", {}).get("next", {}).get("after")
     if not after:
         break
 ```
 
-### Filtering by Date
+### Filter by creation date with the Search API
 
-The API does not support server-side date filtering for the contacts list endpoint. You must:
-1. Pull all contacts (with pagination)
-2. Filter client-side by the `createdate` field
+Rather than pulling every contact and filtering locally, search on `createdate` with `BETWEEN`. Date
+values are Unix epoch milliseconds, as in HubSpot's own example
+([CRM search](https://developers.hubspot.com/docs/api-reference/latest/crm/search-the-crm)):
 
-```python
-sep5_leads = [c for c in all_contacts if "2026-09-05" in c["properties"].get("createdate", "")]
+```
+POST https://api.hubapi.com/crm/objects/2026-09/contacts/search
+{
+  "filterGroups": [{
+    "filters": [{
+      "propertyName": "createdate",
+      "operator": "BETWEEN",
+      "value": "1788566400000",
+      "highValue": "1788652799999"
+    }]
+  }],
+  "properties": ["createdate", "email", "lifecyclestage", "hs_analytics_source"],
+  "limit": 200
+}
 ```
 
-### Example: Full Contact Pull
+That range is 2026-09-05 00:00:00 to 23:59:59.999 UTC. Search limits: five requests per second per
+account, up to 200 results per page, and at most 10,000 results for any query; page past that with
+narrower date ranges.
 
-```python
-import urllib.request, urllib.parse, json
+## Common errors and fixes
 
-token = "YOUR_PRIVATE_APP_TOKEN"
-params = urllib.parse.urlencode({
-    "limit": 100,
-    "properties": "createdate,email,firstname,lastname,company,leadsource,lifecyclestage"
-})
-url = f"https://api.hubapi.com/crm/v3/objects/contacts?{params}"
-req = urllib.request.Request(url, headers={
-    "Authorization": f"Bearer {token}",
-    "Content-Type": "application/json"
-})
-with urllib.request.urlopen(req) as resp:
-    data = json.loads(resp.read().decode())
-contacts = data.get("results", [])
-```
-
-## Common Errors and Fixes
-
-| Error | Cause | Fix |
-|-------|-------|-----|
-| HTTP 401 Unauthorized | Using API key instead of Private App token, or token expired | Create Private App, copy access token, update secret |
-| HTTP 403 Forbidden | Token valid but missing required scopes | Add `crm.objects.contacts.read` scope to Private App |
-| HTTP 400 Bad Request | Malformed query (e.g., `propertiesWithHistory` parameter) | Remove `propertiesWithHistory`, use `properties` only |
-| HTTP 429 Too Many Requests | Rate limit exceeded (100 req/10sec for Private Apps) | Add delay between requests, use pagination |
+| Error | Likely cause | Fix |
+|-------|-------------|-----|
+| 401 Unauthorized | Missing, mistyped, rotated or deleted token, or an old account API key | Send a current service key or private app token as `Authorization: Bearer ...` |
+| 403 Forbidden | Valid token without the needed scope | Add `crm.objects.contacts.read` to the key or app |
+| 400 Bad Request | Malformed request, such as an invalid search body or a search body over 3,000 characters | Check the request against the API reference |
+| 429 Too Many Requests | Rate limit hit | Back off and retry; for privately distributed apps HubSpot allows 100 requests per 10 seconds on Free and Starter and 190 on Professional and Enterprise, with daily caps of 250,000 to 1,000,000 by tier ([usage guidelines](https://developers.hubspot.com/docs/developer-tooling/platform/usage-guidelines)). The Search API has its own limit of five requests per second |
 
 ## What this is not
 
-This is not a guide to HubSpot's OAuth flow (for third-party apps accessing multiple HubSpot accounts). Private App tokens are for accessing your own HubSpot account. For OAuth, see HubSpot's OAuth documentation.
-
-This is also not a guide to HubSpot's webhooks or event-based integrations. For real-time lead notifications, use HubSpot webhooks instead of polling the API.
+This is not a guide to OAuth for apps installed in many HubSpot accounts, or to webhooks. For real-time
+lead notifications, use webhooks instead of polling.
 
 ## References
 
-- HubSpot Private Apps: https://developers.hubspot.com/docs/guides/api/private-apps
-- HubSpot CRM v3 API: https://developers.hubspot.com/docs/reference/crm/objects/contacts
-- HubSpot Scopes: https://developers.hubspot.com/docs/guides/auth/scopes
+- Service keys: https://developers.hubspot.com/docs/apps/developer-platform/build-apps/authentication/account-service-keys
+- Legacy private apps: https://developers.hubspot.com/docs/apps/legacy-apps/private-apps/overview
+- Scopes: https://developers.hubspot.com/docs/apps/legacy-apps/authentication/scopes
+- API versioning: https://developers.hubspot.com/docs/developer-tooling/platform/versioning
+- Contacts API guide: https://developers.hubspot.com/docs/api-reference/latest/crm/objects/contacts/guide
+- CRM search: https://developers.hubspot.com/docs/api-reference/latest/crm/search-the-crm
+- Usage guidelines (rate limits): https://developers.hubspot.com/docs/developer-tooling/platform/usage-guidelines
+- API key sunset: https://developers.hubspot.com/changelog/upcoming-api-key-sunset
+- Traffic source properties: https://knowledge.hubspot.com/properties/understand-traffic-source-properties
