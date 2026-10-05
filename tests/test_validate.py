@@ -236,7 +236,7 @@ class TestPersonalData(RepoCase):
         self.assertIn("KB041", self.codes(WARNING))
 
     def test_a_slack_channel_is_a_warning(self):
-        self.body("Posted in #aios-loup today.")
+        self.body("Posted in #example-channel today.")
 
         self.assertIn("KB041", self.codes(WARNING))
 
